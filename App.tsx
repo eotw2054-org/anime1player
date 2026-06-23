@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
+  DeviceEventEmitter,
   FlatList,
   Modal,
   Pressable,
@@ -316,6 +318,42 @@ export default function App() {
     };
   }, [current?.episodeUrl, fullscreen, isPlaying]);
 
+  // 返回鍵：全螢幕時 → 退出全螢幕（唔關 app）；否則行預設（離開 app）
+  useEffect(() => {
+    const onBack = () => {
+      if (fullscreen) {
+        setFullscreen(false);
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [fullscreen]);
+
+  // 遙控器按鍵（只喺全螢幕生效）：OK=播放/暫停, 上=上集, 下=下集, 左/右=倒退/快進
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('hwKey', (name: string) => {
+      if (!fullscreen) return;
+      showControls();
+      try {
+        if (name === 'ok') {
+          if (player.playing) player.pause();
+          else player.play();
+        } else if (name === 'up') {
+          if (current?.prevUrl) playEpisode(current.prevUrl);
+        } else if (name === 'down') {
+          if (current?.nextUrl) playEpisode(current.nextUrl);
+        } else if (name === 'left') {
+          player.currentTime = Math.max(0, player.currentTime - 10);
+        } else if (name === 'right') {
+          player.currentTime = player.currentTime + 10;
+        }
+      } catch {}
+    });
+    return () => sub.remove();
+  }, [fullscreen, current?.episodeUrl, current?.prevUrl, current?.nextUrl]);
+
   // 播放器（普通／全螢幕共用同一個 VideoView）
   const playerNode = (
     <>
@@ -328,13 +366,14 @@ export default function App() {
       />
       {/* 收起時：透明感應層，撳一下／D-pad 重新顯示 */}
       {!ctrlShown && (
-        <Pressable focusable style={s.tapCatcher} onPress={showControls} />
+        <Pressable focusable={!fullscreen} style={s.tapCatcher} onPress={showControls} />
       )}
       {/* 疊層：上集 / 下集 */}
       {ctrlShown && current && (
         <>
           <Pressable
             {...focusProps('ov-prev')}
+            focusable={!fullscreen}
             disabled={!current.prevUrl}
             style={[s.ovBtn, s.ovLeft, !current.prevUrl && s.ovOff, focused('ov-prev')]}
             onPress={() => current.prevUrl && playEpisode(current.prevUrl)}>
@@ -342,6 +381,7 @@ export default function App() {
           </Pressable>
           <Pressable
             {...focusProps('ov-next')}
+            focusable={!fullscreen}
             disabled={!current.nextUrl}
             style={[s.ovBtn, s.ovRight, !current.nextUrl && s.ovOff, focused('ov-next')]}
             onPress={() => current.nextUrl && playEpisode(current.nextUrl)}>
@@ -349,13 +389,14 @@ export default function App() {
           </Pressable>
         </>
       )}
-      {/* 全螢幕：退出掣 */}
+      {/* 全螢幕：退出 / 進入 掣 */}
       {ctrlShown && (
         <Pressable
           {...focusProps('fs-toggle')}
-          style={[s.fsToggle, focused('fs-toggle')]}
+          focusable={!fullscreen}
+          style={[s.fsToggle, fullscreen && s.fsToggleFs, focused('fs-toggle')]}
           onPress={() => setFullscreen((f) => !f)}>
-          <Text style={s.fsToggleText}>{fullscreen ? '⤢ 退出' : '⛶ 全螢幕'}</Text>
+          <Text style={s.fsToggleText}>{fullscreen ? '⤢ 退出全螢幕' : '⛶ 全螢幕'}</Text>
         </Pressable>
       )}
     </>
@@ -955,7 +996,17 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  fsToggleText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  // 全螢幕：退出掣放低啲、大啲、明顯啲（避開投影機 overscan）
+  fsToggleFs: {
+    top: 56,
+    right: 40,
+    backgroundColor: 'rgba(255,77,141,0.92)',
+    borderColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  fsToggleText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   fsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   fsEnterBtn: {
     backgroundColor: C.panel,
