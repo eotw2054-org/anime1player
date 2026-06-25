@@ -1,3 +1,4 @@
+import 'react-native-url-polyfill/auto'; // 令 new URL() 喺 RN 可用（資料層需要）
 import { registerRootComponent } from 'expo';
 
 import App from './App';
