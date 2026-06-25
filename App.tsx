@@ -17,6 +17,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   type Anime,
@@ -280,7 +281,8 @@ export default function App() {
   const isLandscape = width >= height;
 
   const [siteKey, setSiteKey] = useState<SiteKey>('in');
-  const [list, setList] = useState<Anime[]>([]);
+  const [lists, setLists] = useState<Record<string, Anime[]>>({}); // 每個站台一份清單
+  const list = lists[siteKey] ?? []; // 當前站台清單（瀏覽用）
   const [loadingList, setLoadingList] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -449,14 +451,51 @@ export default function App() {
     AsyncStorage.setItem('site', siteKey);
   }, [siteKey]);
 
+  // 開 app 即刻由兩站快取 hydrate，等搜尋可以跨站（唔等網路，快）
+  useEffect(() => {
+    (async () => {
+      const entries = await Promise.all(
+        (Object.keys(SITES) as SiteKey[]).map(async (s) => {
+          try {
+            const c = await AsyncStorage.getItem('list:' + s);
+            const arr = c ? JSON.parse(c) : null;
+            return [s, Array.isArray(arr) ? arr : null] as const;
+          } catch {
+            return [s, null] as const;
+          }
+        })
+      );
+      const next: Record<string, Anime[]> = {};
+      for (const [s, arr] of entries) if (arr?.length) next[s] = arr;
+      // 已有（剛 fetch 嘅最新）優先，唔好被快取蓋過
+      if (Object.keys(next).length) setLists((prev) => ({ ...next, ...prev }));
+    })();
+  }, []);
+
   async function loadList(site: SiteKey) {
-    setLoadingList(true);
+    // 先即刻顯示本地快取（若有），唔使等網路
+    let hadCache = false;
+    try {
+      const cached = await AsyncStorage.getItem('list:' + site);
+      if (cached) {
+        const arr = JSON.parse(cached);
+        if (Array.isArray(arr) && arr.length) {
+          setLists((prev) => ({ ...prev, [site]: arr }));
+          hadCache = true;
+        }
+      }
+    } catch {}
+    // 冇快取先轉圈；有快取就背景靜靜更新
+    if (!hadCache) setLoadingList(true);
     setListError(null);
     try {
       const html = await fetchHtml(SITES[site] + '/');
-      setList(parseHomeList(html, SITES[site]));
+      const fresh = parseHomeList(html, SITES[site]);
+      setLists((prev) => ({ ...prev, [site]: fresh }));
+      AsyncStorage.setItem('list:' + site, JSON.stringify(fresh));
     } catch (e: any) {
-      setListError(e?.message || '載入失敗');
+      // 有快取就靜靜失敗、繼續顯示舊清單；冇快取先報錯
+      if (!hadCache) setListError(e?.message || '載入失敗');
     } finally {
       setLoadingList(false);
     }
@@ -616,8 +655,22 @@ export default function App() {
   // ===== 側欄清單分組 =====
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const src = tab === 'fav' ? favorites : list;
-    const filtered = src.filter((a) => !q || a.search.includes(q) || a.slug.includes(q));
+    // 搜尋時跨站合併（用已 hydrate 嘅快取，唔等網路）；冇搜尋淨係當前站
+    const src =
+      tab === 'fav'
+        ? favorites
+        : q
+        ? (Object.keys(SITES) as SiteKey[]).flatMap((s) => lists[s] ?? [])
+        : list;
+    // 去重複：同一套（site|slug）只留第一次出現，維持原本次序
+    const seen = new Set<string>();
+    const deduped = src.filter((a) => {
+      const k = favKey(a);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    const filtered = deduped.filter((a) => !q || a.search.includes(q) || a.slug.includes(q));
     if (tab === 'fav') {
       return filtered.length ? [{ title: '★ 我的最愛', data: filtered }] : [];
     }
@@ -628,7 +681,7 @@ export default function App() {
     return Object.keys(groups)
       .sort((x, y) => (y === '其他' ? -1 : x === '其他' ? 1 : Number(y) - Number(x)))
       .map((yr) => ({ title: yr === '其他' ? '其他' : `${yr} 年更新`, data: groups[yr] }));
-  }, [list, favorites, query, tab]);
+  }, [lists, siteKey, favorites, query, tab]);
 
   // ===== 焦點輔助（讓遙控器 / 空中滑鼠可操作）=====
   const focusProps = (id: string) => ({
@@ -685,6 +738,17 @@ export default function App() {
     const id = setTimeout(measureSlot, 0);
     return () => clearTimeout(id);
   }, [width, height, sidebarOpen, selected, isPlaying, fullscreen]);
+
+  // 全螢幕播放時防止入屏保：hold 住一支獨立於 play/pause 狀態嘅 keep-awake，
+  // 咁就算卡 buffer / 跳廣告 / 換集，閒置計時器都唔會彈出屏保（內嵌窗仍靠 expo-video 內建）
+  useEffect(() => {
+    if (isPlaying && fullscreen) {
+      activateKeepAwakeAsync('fs-player');
+      return () => {
+        deactivateKeepAwake('fs-player');
+      };
+    }
+  }, [isPlaying, fullscreen]);
 
   // 控制列自動隱藏（同原生控制一齊 show/hide）
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -842,6 +906,10 @@ export default function App() {
     const k = favKey(item);
     const fav = favSet.has(k);
     const active = selected != null && favKey(selected) === k;
+    // 搜尋時顯示來源站台（跨站搜尋會混入兩站，標籤分得清）
+    const siteTag = query.trim()
+      ? (Object.keys(SITES) as SiteKey[]).find((kk) => SITES[kk] === item.site)
+      : null;
     return (
       <View style={[s.row, active && s.rowActive]}>
         <Pressable
@@ -854,6 +922,7 @@ export default function App() {
           </Text>
           <Text style={s.rowMeta} numberOfLines={1}>
             <Text style={s.rowLive}>{item.cntText}</Text> · {item.update}
+            {siteTag ? <Text style={s.rowSite}>{'  ·  anime1.' + siteTag}</Text> : null}
           </Text>
         </Pressable>
         <Pressable
@@ -876,19 +945,22 @@ export default function App() {
   );
 
   // 標題列（名 + 集 + 繼續看 + 我的最愛 + 已收藏）
-  const resumeAt = current ? progressRef.current[favKey(current.anime)]?.time ?? 0 : 0;
-  const titleAnime = current ? current.anime : selected;
+  // 標題跟「正喺睇緊／揀緊」嗰套（selected 優先），切動畫即刻更新
+  const titleAnime = selected ?? current?.anime ?? null;
+  // 顯示緊嗰套 = 正播緊嗰套 先顯示集數／繼續觀看（免得新名配舊集數）
+  const playingThis = !!(current && titleAnime && favKey(current.anime) === favKey(titleAnime));
+  const resumeAt = playingThis ? progressRef.current[favKey(titleAnime!)]?.time ?? 0 : 0;
   const titleBar = titleAnime && (
     <View style={s.titleBar}>
       <Text style={s.tbName} numberOfLines={1}>
         {titleAnime.name}
       </Text>
-      {current && (
+      {playingThis && (
         <View style={s.tbEp}>
-          <Text style={s.tbEpText}>第 {current.episodeNo} 集</Text>
+          <Text style={s.tbEpText}>第 {current!.episodeNo} 集</Text>
         </View>
       )}
-      {current && resumeAt > 1 && (
+      {playingThis && resumeAt > 1 && (
         <View style={s.tbResume}>
           <Text style={s.tbResumeText}>↺ 繼續觀看 {fmtTime(resumeAt)}</Text>
         </View>
@@ -1350,6 +1422,7 @@ const s = StyleSheet.create({
   rowName: { color: C.text, fontSize: 14, fontWeight: '700' },
   rowNameActive: { color: C.cyan },
   rowMeta: { color: C.muted, fontSize: 11, marginTop: 1 },
+  rowSite: { color: C.cyan, fontWeight: '800' },
   rowLive: { color: C.good, fontStyle: 'italic' },
   heart: { paddingHorizontal: 8, paddingVertical: 6 },
   heartIcon: { color: C.mutedDim, fontSize: 16, fontWeight: '700' },
@@ -1504,8 +1577,8 @@ const s = StyleSheet.create({
   ovOff: { opacity: 0.25 },
   ovText: { color: '#fff', fontSize: 14, fontWeight: '800', textAlign: 'center', lineHeight: 18 },
   fsTopBar: { position: 'absolute', top: 44, left: 0, right: 0, alignItems: 'center' },
-  fsTopName: { color: '#fff', fontSize: 17, fontWeight: '800', maxWidth: '70%', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
-  fsTopEp: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '700', marginTop: 2, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
+  fsTopName: { color: '#fff', fontSize: 51, fontWeight: '800', maxWidth: '70%', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
+  fsTopEp: { color: 'rgba(255,255,255,0.75)', fontSize: 39, fontWeight: '700', marginTop: 6, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
   fsToggle: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(11,14,26,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   fsToggleFs: { top: 40, right: 30, backgroundColor: 'rgba(255,77,141,0.92)', borderColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   fsToggleText: { color: '#fff', fontSize: 13, fontWeight: '800' },
