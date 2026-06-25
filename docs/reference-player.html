@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8">
+    <title>Anime1.in – 進階串流選擇器 (穩定版)</title>
+    <style>
+        body{font-family:Arial,sans-serif;margin:2rem;background:#f8f8f8}
+        h1{font-size:1.6rem}
+        .url-form{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:1rem}
+        .url-form input[type=text]{flex:1;min-width:200px;padding:.3rem;border:1px solid #ccc;border-radius:4px}
+        .btn{background:#0066cc;color:#fff;padding:.3rem .7rem;border-radius:4px;border:none;cursor:pointer;display:inline-block}
+        .btn:hover{background:#004c99}
+        .btn:disabled{opacity:.5;cursor:not-allowed}
+        #player-area video{width:100%;max-width:640px;height:auto;background:#000}
+        .status-bar{padding:.5rem;background:#e9ecef;border-radius:4px;margin:.5rem 0}
+        .status-bar.error{background:#f8d7da;color:#721c24}
+        .status-bar.success{background:#d4edda;color:#155724}
+        .stream-item{border-left:3px solid #0066cc;padding:.5rem;margin:.5rem 0;background:#fff;border-radius:4px}
+        .source-link{font-size:.85rem;word-break:break-all}
+        .links ul{list-style:none;padding:0}
+        #nav-buttons{margin-top:1rem}
+        #skip-container{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.5rem 0}
+        #init-skip-input{width:70px;padding:.3rem;border:1px solid #ccc;border-radius:4px}
+        @media(max-width:600px){.url-form input[type=text]{width:100%}}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+    <h1>Anime1.in – 進階串流選擇器 (穩定版)</h1>
+
+    <div class="url-form">
+        <input type="text" id="episode-url-input" placeholder="https://anime1.in/2025-guang-yin-zhi-wai-10015000" />
+        <button id="load-btn" class="btn">載入</button>
+        <button id="toggle-fetch-all-btn" class="btn">一次抓取所有來源</button>
+        <button id="proxy-select-btn" class="btn" style="background:#6c757d;">切換代理</button>
+    </div>
+
+    <div id="browse-panel" style="background:#fff;border:1px solid #ddd;border-radius:6px;padding:.6rem;margin-bottom:1rem;">
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+            <strong>動畫列表</strong>
+            <select id="site-select" style="padding:.3rem;border:1px solid #ccc;border-radius:4px;">
+                <option value="https://anime1.in">anime1.in</option>
+                <option value="https://anime1.one">anime1.one</option>
+            </select>
+            <span id="browse-count" style="color:#888;font-size:.85rem;"></span>
+            <input type="text" id="anime-filter" placeholder="搜尋動畫名稱／拼音…" style="flex:1;min-width:160px;padding:.3rem;border:1px solid #ccc;border-radius:4px;" />
+            <button id="browse-reload" class="btn">重新整理</button>
+            <button id="browse-toggle" class="btn" style="background:#6c757d;">收合</button>
+        </div>
+        <div id="browse-body">
+            <div id="anime-list" style="max-height:240px;overflow:auto;margin-top:.5rem;border:1px solid #f0f0f0;border-radius:4px;"></div>
+            <div id="chapter-area" style="display:none;margin-top:.5rem;border-top:1px solid #eee;padding-top:.5rem;">
+                <div id="chapter-title" style="font-weight:bold;margin-bottom:.4rem;"></div>
+                <div id="chapter-list" style="display:flex;flex-wrap:wrap;gap:.4rem;"></div>
+            </div>
+        </div>
+    </div>
+
+    <p>目標網址：<code id="current-url"></code></p>
+    <div id="status" class="status-bar">就緒</div>
+
+    <div id="player-area" style="display:none;">
+        <div id="episode-number" style="font-weight:bold;font-size:1.1rem;"></div>
+        <div><label for="source-select">選擇來源：</label><select id="source-select"></select></div>
+        <div id="skip-container">
+            <label>跳過秒數：<input type="number" id="init-skip-input" min="0" value="0" /></label>
+            <button id="fullscreen-btn" class="btn">全螢幕</button>
+            <button id="manual-play-btn" class="btn" style="background:#28a745;">手動開啟</button>
+        </div>
+        <video id="video-player" controls></video>
+    </div>
+
+    <div id="nav-buttons"><div id="prev-btn-container"></div><div id="next-btn-container"></div></div>
+
+    <div class="links" id="output" style="display:none;">
+        <h2>解析出的串流連結</h2>
+        <ul id="stream-list"></ul>
+    </div>
+
+    <script>
+        (() => {
+            // ---------- 擴增代理清單 ----------
+            const PROXY_LIST = [
+                '',                                       // 直接連線（需 Firefox CORS 擴充，最快）
+                // ----- 以下公共代理已停用（大多已掛/被封）。想用返就移除前面的 // -----
+                // 'https://api.allorigins.win/raw?url=',
+                // 'https://corsproxy.io/?',
+                // 'https://api.allorigins.win/get?url=',
+                // 'https://cors-anywhere.herokuapp.com/',
+                // 'https://proxy.cors.sh/',
+            ];
+            let currentProxyIndex = 0;
+
+            // ---------- DOM ----------
+            const statusEl = document.getElementById('status');
+            const outputEl = document.getElementById('output');
+            const streamList = document.getElementById('stream-list');
+            const currentUrlEl = document.getElementById('current-url');
+            const episodeInput = document.getElementById('episode-url-input');
+            const loadBtn = document.getElementById('load-btn');
+            const toggleBtn = document.getElementById('toggle-fetch-all-btn');
+            const proxySelectBtn = document.getElementById('proxy-select-btn');
+            const playerArea = document.getElementById('player-area');
+            const videoPlayer = document.getElementById('video-player');
+            const sourceSelect = document.getElementById('source-select');
+            const episodeNumberEl = document.getElementById('episode-number');
+            const prevBtnContainer = document.getElementById('prev-btn-container');
+            const nextBtnContainer = document.getElementById('next-btn-container');
+            const initSkipInput = document.getElementById('init-skip-input');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const manualPlayBtn = document.getElementById('manual-play-btn');
+
+            // ---------- 儲存鍵 ----------
+            const STORAGE_KEY = 'anime1one-selected-source';
+            const STORAGE_SKIP_KEY = 'anime1one-skip-sec';
+            const FETCH_ALL_KEY = 'anime1one-fetch-all';
+            const PROXY_INDEX_KEY = 'anime1one-proxy-index';
+
+            // ---------- 狀態 ----------
+            let fetchAll = JSON.parse(localStorage.getItem(FETCH_ALL_KEY));
+            if (fetchAll === null) fetchAll = true;
+            let nextEpisodeUrl = null;
+            let currentStreamInfos = [];
+            let abortController = null;
+
+            const savedProxy = parseInt(localStorage.getItem(PROXY_INDEX_KEY), 10);
+            if (!isNaN(savedProxy) && savedProxy < PROXY_LIST.length) currentProxyIndex = savedProxy;
+            updateProxyButtonText();
+
+            // ---------- 工具函式 ----------
+            const delay = ms => new Promise(r => setTimeout(r, ms));
+
+            function setFetchAll(state) {
+                fetchAll = state;
+                localStorage.setItem(FETCH_ALL_KEY, JSON.stringify(state));
+                toggleBtn.textContent = state ? '一次抓取所有來源' : '只抓取已選來源';
+            }
+            setFetchAll(fetchAll);
+            toggleBtn.onclick = () => setFetchAll(!fetchAll);
+
+            function updateProxyButtonText() {
+                const label = PROXY_LIST[currentProxyIndex] === '' ? '直接連線' : `代理 ${currentProxyIndex+1}`;
+                proxySelectBtn.textContent = `${label} (${currentProxyIndex+1}/${PROXY_LIST.length})`;
+            }
+            proxySelectBtn.onclick = () => {
+                currentProxyIndex = (currentProxyIndex + 1) % PROXY_LIST.length;
+                localStorage.setItem(PROXY_INDEX_KEY, currentProxyIndex);
+                updateProxyButtonText();
+                statusEl.textContent = `切換至代理 ${currentProxyIndex+1}`;
+                statusEl.className = 'status-bar';
+            };
+
+            // ---------- 帶超時與可取消的抓取 ----------
+            async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+                if (abortController) {
+                    abortController.abort();
+                    abortController = null;
+                }
+                abortController = new AbortController();
+                const signal = abortController.signal;
+                try {
+                    const fetchPromise = fetch(url, { ...options, signal });
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('請求超時')), timeoutMs)
+                    );
+                    const resp = await Promise.race([fetchPromise, timeoutPromise]);
+                    return resp; // 不回報 .ok，讓上層處理
+                } catch (err) {
+                    if (err.name === 'AbortError') throw new Error('請求已被取消');
+                    throw err;
+                } finally {
+                    abortController = null;
+                }
+            }
+
+            // ---------- 透過代理取得 HTML ----------
+            async function fetchPageViaProxy(pageUrl, proxyIndex = currentProxyIndex) {
+                const proxy = PROXY_LIST[proxyIndex];
+                const encodedUrl = encodeURIComponent(pageUrl);
+                let fullUrl;
+                const options = {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    }
+                };
+
+                if (!proxy) {
+                    // 直接連線（需 Firefox CORS unblock 擴充幫 response 加 CORS header）
+                    const resp = await fetchWithTimeout(pageUrl, options);
+                    if (!resp.ok) throw new Error(`直接連線 HTTP ${resp.status}`);
+                    return await resp.text();
+                } else if (proxy.includes('allorigins.win/raw') || proxy.includes('corsproxy.io')) {
+                    fullUrl = proxy + encodedUrl;
+                } else if (proxy.includes('allorigins.win/get')) {
+                    fullUrl = proxy + encodedUrl;
+                    const resp = await fetchWithTimeout(fullUrl, options);
+                    if (!resp.ok) throw new Error(`代理 ${proxyIndex+1} HTTP ${resp.status}`);
+                    const json = await resp.json();
+                    if (json && json.contents) return json.contents;
+                    throw new Error('無法解析 allorigins get 回傳');
+                } else if (proxy.includes('cors-anywhere') || proxy.includes('proxy.cors.sh')) {
+                    fullUrl = proxy + pageUrl; // 這些代理接受未編碼的 URL
+                } else {
+                    fullUrl = proxy + encodedUrl;
+                }
+
+                const resp = await fetchWithTimeout(fullUrl, options);
+                if (!resp.ok) throw new Error(`代理 ${proxyIndex+1} HTTP ${resp.status}`);
+                return await resp.text();
+            }
+
+            // ---------- 嘗試所有代理 ----------
+            async function fetchPageHtml(pageUrl) {
+                const errors = [];
+                for (let i = 0; i < PROXY_LIST.length; i++) {
+                    const idx = (currentProxyIndex + i) % PROXY_LIST.length;
+                    try {
+                        statusEl.textContent = `嘗試代理 ${idx+1} (${PROXY_LIST[idx]}) ...`;
+                        statusEl.className = 'status-bar';
+                        const html = await fetchPageViaProxy(pageUrl, idx);
+                        if (html && (html.trim().startsWith('<!DOCTYPE') || html.includes('<html') || html.includes('<video'))) {
+                            currentProxyIndex = idx;
+                            localStorage.setItem(PROXY_INDEX_KEY, currentProxyIndex);
+                            updateProxyButtonText();
+                            return html;
+                        } else {
+                            throw new Error('回傳內容非有效 HTML');
+                        }
+                    } catch (e) {
+                        errors.push(`代理 ${idx+1}: ${e.message}`);
+                        if (i === PROXY_LIST.length - 1) {
+                            throw new Error(`所有代理皆失敗：\n${errors.join('\n')}`);
+                        }
+                    }
+                }
+                throw new Error('無可用代理');
+            }
+
+            // ---------- 判斷可播放 ----------
+            function isPlayableUrl(url) {
+                return url && (url.endsWith('.mp4') || url.endsWith('.webm') || url.includes('.m3u8'));
+            }
+
+            // ---------- 深度解析影片來源 ----------
+            async function fetchVideoSourceDeep(pageUrl, depth = 0) {
+                if (depth > 3) return null;
+                try {
+                    const html = await fetchPageHtml(pageUrl);
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const base = new URL(pageUrl);
+
+                    const video = doc.querySelector('video');
+                    if (video) {
+                        let src = video.getAttribute('src');
+                        if (!src) {
+                            const source = video.querySelector('source');
+                            if (source) src = source.getAttribute('src');
+                        }
+                        if (src) {
+                            if (src.startsWith('/')) src = new URL(src, base.origin).href;
+                            return src;
+                        }
+                    }
+
+                    const iframe = doc.querySelector('iframe');
+                    if (iframe) {
+                        const srcAttr = iframe.getAttribute('src');
+                        if (srcAttr) {
+                            let iframeSrc = srcAttr.startsWith('/') ? new URL(srcAttr, base.origin).href : srcAttr;
+                            if (!iframeSrc.startsWith('http')) iframeSrc = new URL(iframeSrc, base).href;
+                            return await fetchVideoSourceDeep(iframeSrc, depth + 1);
+                        }
+                    }
+
+                    const links = doc.querySelectorAll('a[href]');
+                    for (const a of links) {
+                        const hrefAttr = a.getAttribute('href');
+                        if (hrefAttr && (hrefAttr.includes('.m3u8') || hrefAttr.includes('.mp4') || hrefAttr.includes('.webm'))) {
+                            let full = hrefAttr.startsWith('/') ? new URL(hrefAttr, base.origin).href : hrefAttr;
+                            if (!full.startsWith('http')) full = new URL(full, base).href;
+                            return full;
+                        }
+                    }
+
+                    const scripts = doc.querySelectorAll('script');
+                    for (const script of scripts) {
+                        const text = script.textContent || '';
+                        const match = text.match(/(https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)/);
+                        if (match) return match[1];
+                    }
+                    return null;
+                } catch (e) {
+                    console.warn('解析來源失敗', pageUrl, e);
+                    return null;
+                }
+            }
+
+            // ---------- 播放 ----------
+            function playSource(url) {
+                const skipSec = parseFloat(localStorage.getItem(STORAGE_SKIP_KEY)) || 0;
+                if (url && url.startsWith('/')) {
+                    const base = new URL(currentUrlEl.textContent);
+                    url = new URL(url, base.origin).href;
+                }
+                if (url && url.includes('.m3u8')) {
+                    if (Hls.isSupported()) {
+                        const hls = new Hls();
+                        hls.loadSource(url);
+                        hls.attachMedia(videoPlayer);
+                    } else {
+                        videoPlayer.src = url;
+                    }
+                } else {
+                    videoPlayer.src = url || '';
+                }
+                const onMeta = () => {
+                    if (skipSec > 0 && videoPlayer.duration > skipSec) {
+                        videoPlayer.currentTime = skipSec;
+                    }
+                    videoPlayer.removeEventListener('loadedmetadata', onMeta);
+                    videoPlayer.play().catch(() => {});
+                };
+                videoPlayer.addEventListener('loadedmetadata', onMeta);
+                if (videoPlayer.src) videoPlayer.load();
+            }
+
+            // ---------- 導航按鈕 ----------
+            function getNavButton(text, href, container) {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.textContent = text;
+                btn.onclick = () => { if (href) loadEpisode(href); };
+                container.appendChild(btn);
+                return btn;
+            }
+
+            // ---------- 解析集數 ----------
+            function extractEpisodeNumber(url) {
+                try {
+                    const parts = url.split('-');
+                    const code = parts[parts.length - 1];
+                    if (!code || code.length < 5) return 'N/A';
+                    const numStr = code.slice(2, 5);
+                    const num = parseInt(numStr, 10);
+                    return isNaN(num) ? 'N/A' : String(num);
+                } catch (_) { return 'N/A'; }
+            }
+
+            function extractAnimeSlug(url) {
+                try {
+                    const u = new URL(url);
+                    const parts = u.pathname.split('/').filter(Boolean);
+                    if (!parts.length) return null;
+                    const last = parts[parts.length - 1];
+                    const m = last.match(/^(.*)-100\d{5}$/);
+                    return m ? m[1] : null;
+                } catch (_) { return null; }
+            }
+
+            function buildPrevEpisodeUrl(currentUrl) {
+                const slug = extractAnimeSlug(currentUrl);
+                if (!slug) return null;
+                const epNum = parseInt(extractEpisodeNumber(currentUrl), 10);
+                if (isNaN(epNum) || epNum <= 1) return null;
+                const prevNum = epNum - 1;
+                const padded = String(prevNum).padStart(2, '0');
+                const code = '100' + padded + '000';
+                const u = new URL(currentUrl);
+                u.pathname = '/' + slug + '-' + code;
+                return u.href;
+            }
+
+            // ---------- 主要載入（已修正所有相對路徑解析）----------
+            async function loadEpisode(episodeUrl) {
+                if (abortController) {
+                    abortController.abort();
+                    abortController = null;
+                }
+                nextEpisodeUrl = null;
+                statusEl.style.display = '';
+                statusEl.className = 'status-bar';
+                statusEl.textContent = '載入中...';
+                outputEl.style.display = 'none';
+                streamList.innerHTML = '';
+                prevBtnContainer.innerHTML = '';
+                nextBtnContainer.innerHTML = '';
+                playerArea.style.display = 'none';
+                sourceSelect.innerHTML = '';
+                videoPlayer.src = '';
+                currentUrlEl.textContent = episodeUrl;
+                episodeInput.value = episodeUrl;
+
+                try {
+                    const html = await fetchPageHtml(episodeUrl);
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const base = new URL(episodeUrl);
+
+                    // 收集所有潛在來源（改用 getAttribute 避免 file:/// 汙染）
+                    const streams = [];
+
+                    const vframe = doc.querySelector('iframe.vframe');
+                    if (vframe) {
+                        const srcAttr = vframe.getAttribute('src');
+                        if (srcAttr) {
+                            const fullUrl = new URL(srcAttr, base).href;
+                            streams.push({ label: 'Main', streamUrl: fullUrl, sourceUrl: null });
+                        }
+                    }
+
+                    const vframeOld = doc.querySelector('iframe[name="vframe"]');
+                    if (vframeOld && !vframe) {
+                        const srcAttr = vframeOld.getAttribute('src');
+                        if (srcAttr) {
+                            streams.push({ label: 'Main', streamUrl: new URL(srcAttr, base).href, sourceUrl: null });
+                        }
+                    }
+
+                    doc.querySelectorAll('.play-select').forEach((btn, idx) => {
+                        const raw = btn.getAttribute('url');
+                        if (raw) {
+                            streams.push({
+                                label: btn.textContent.trim() || `分流 ${idx+1}`,
+                                streamUrl: new URL(raw, base).href,
+                                sourceUrl: null
+                            });
+                        }
+                    });
+
+                    const other = doc.getElementById('other');
+                    if (other) {
+                        other.querySelectorAll('iframe').forEach((ifr, idx) => {
+                            const srcAttr = ifr.getAttribute('src');
+                            if (srcAttr) {
+                                streams.push({
+                                    label: `分流 ${idx+1}`,
+                                    streamUrl: new URL(srcAttr, base).href,
+                                    sourceUrl: null
+                                });
+                            }
+                        });
+                    }
+
+                    if (streams.length === 0) {
+                        const anyIframe = doc.querySelector('iframe');
+                        if (anyIframe) {
+                            const srcAttr = anyIframe.getAttribute('src');
+                            if (srcAttr) {
+                                streams.push({ label: 'Embed', streamUrl: new URL(srcAttr, base).href, sourceUrl: null });
+                            }
+                        }
+                    }
+
+                    if (streams.length === 0) throw new Error('找不到任何播放器來源');
+
+                    let streamInfos;
+                    if (fetchAll) {
+                        streamInfos = await Promise.all(
+                            streams.map(async s => {
+                                const src = await fetchVideoSourceDeep(s.streamUrl);
+                                return { ...s, sourceUrl: src };
+                            })
+                        );
+                    } else {
+                        const savedIdx = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+                        const defaultIdx = (isNaN(savedIdx) || savedIdx < 0 || savedIdx >= streams.length) ? 0 : savedIdx;
+                        streamInfos = await Promise.all(
+                            streams.map(async (s, idx) => {
+                                if (idx === defaultIdx) {
+                                    const src = await fetchVideoSourceDeep(s.streamUrl);
+                                    return { ...s, sourceUrl: src };
+                                }
+                                return { ...s, sourceUrl: null };
+                            })
+                        );
+                    }
+                    currentStreamInfos = streamInfos;
+
+                    // 顯示清單
+                    streamInfos.forEach((s, idx) => {
+                        const li = document.createElement('li');
+                        li.className = 'stream-item';
+                        const labelSpan = document.createElement('span');
+                        labelSpan.style.fontWeight = 'bold';
+                        labelSpan.textContent = s.label + ': ';
+                        li.appendChild(labelSpan);
+                        const a = document.createElement('a');
+                        a.href = s.streamUrl;
+                        a.textContent = s.streamUrl;
+                        a.target = '_blank';
+                        li.appendChild(a);
+                        const srcDiv = document.createElement('div');
+                        srcDiv.className = 'source-link';
+                        if (s.sourceUrl) {
+                            const srcA = document.createElement('a');
+                            srcA.href = s.sourceUrl;
+                            srcA.target = '_blank';
+                            srcA.textContent = '▶ ' + s.sourceUrl;
+                            srcDiv.appendChild(srcA);
+                        } else {
+                            const span = document.createElement('span');
+                            span.textContent = fetchAll ? '❌ 無法解析' : '⏳ 待解析';
+                            span.style.color = '#999';
+                            srcDiv.appendChild(span);
+                        }
+                        li.appendChild(srcDiv);
+                        streamList.appendChild(li);
+
+                        const opt = document.createElement('option');
+                        opt.value = idx;
+                        opt.textContent = s.label + (isPlayableUrl(s.sourceUrl) ? '' : ' (待解析)');
+                        sourceSelect.appendChild(opt);
+                    });
+
+                    // 下一集（修正：使用 getAttribute 確保相對路徑正確解析）
+                    const nextA = Array.from(doc.querySelectorAll('a')).find(a => a.textContent.trim() === '下一集');
+                    if (nextA) {
+                        const hrefAttr = nextA.getAttribute('href');
+                        if (hrefAttr && hrefAttr !== '#') {
+                            const href = new URL(hrefAttr, base).href;
+                            if (href !== episodeUrl) {
+                                nextEpisodeUrl = href;
+                                getNavButton('下一集 →', href, nextBtnContainer);
+                            } else {
+                                const btn = document.createElement('button');
+                                btn.className = 'btn';
+                                btn.textContent = '下一集 → (已是最新)';
+                                btn.disabled = true;
+                                nextBtnContainer.appendChild(btn);
+                            }
+                        } else {
+                            // href 為空或 #
+                            const btn = document.createElement('button');
+                            btn.className = 'btn';
+                            btn.textContent = '下一集 → (無)';
+                            btn.disabled = true;
+                            nextBtnContainer.appendChild(btn);
+                        }
+                    } else {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn';
+                        btn.textContent = '下一集 → (無)';
+                        btn.disabled = true;
+                        nextBtnContainer.appendChild(btn);
+                    }
+
+                    // 上一集
+                    const prevHref = buildPrevEpisodeUrl(episodeUrl);
+                    if (prevHref) {
+                        getNavButton('← 上一集', prevHref, prevBtnContainer);
+                    } else {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn';
+                        btn.textContent = '← 上一集 (首集)';
+                        btn.disabled = true;
+                        prevBtnContainer.appendChild(btn);
+                    }
+
+                    // 播放器
+                    const playableIdx = streamInfos.findIndex(s => isPlayableUrl(s.sourceUrl));
+                    if (playableIdx >= 0) {
+                        playerArea.style.display = 'block';
+                        episodeNumberEl.textContent = `Episode ${extractEpisodeNumber(episodeUrl)}`;
+                        const savedIdx = parseInt(localStorage.getItem(STORAGE_KEY), 10);
+                        const playIdx = (savedIdx >= 0 && savedIdx < streamInfos.length && isPlayableUrl(streamInfos[savedIdx].sourceUrl))
+                            ? savedIdx : playableIdx;
+                        sourceSelect.value = playIdx;
+                        playSource(streamInfos[playIdx].sourceUrl);
+                        localStorage.setItem(STORAGE_KEY, playIdx);
+                    } else if (streamInfos.length > 0) {
+                        playerArea.style.display = 'block';
+                        episodeNumberEl.textContent = `Episode ${extractEpisodeNumber(episodeUrl)}`;
+                        sourceSelect.value = 0;
+                        const src = await fetchVideoSourceDeep(streamInfos[0].streamUrl);
+                        streamInfos[0].sourceUrl = src;
+                        if (isPlayableUrl(src)) {
+                            playSource(src);
+                            localStorage.setItem(STORAGE_KEY, 0);
+                        } else {
+                            statusEl.textContent = '⚠️ 無法取得影片源';
+                            statusEl.className = 'status-bar error';
+                        }
+                    }
+
+                    sourceSelect.onchange = async () => {
+                        const idx = parseInt(sourceSelect.value, 10);
+                        const info = currentStreamInfos[idx];
+                        if (!info) return;
+                        if (!info.sourceUrl) {
+                            statusEl.textContent = `正在解析 ${info.label} ...`;
+                            statusEl.className = 'status-bar';
+                            const src = await fetchVideoSourceDeep(info.streamUrl);
+                            info.sourceUrl = src;
+                            const opt = sourceSelect.options[idx];
+                            if (isPlayableUrl(src)) {
+                                opt.textContent = info.label;
+                                opt.disabled = false;
+                                const li = streamList.children[idx];
+                                const srcDiv = li.querySelector('.source-link');
+                                if (srcDiv) srcDiv.innerHTML = `<a href="${src}" target="_blank">▶ ${src}</a>`;
+                                playSource(src);
+                                localStorage.setItem(STORAGE_KEY, idx);
+                                statusEl.textContent = `已載入 ${info.label}`;
+                                statusEl.className = 'status-bar success';
+                            } else {
+                                opt.textContent = `${info.label} (無法解析)`;
+                                opt.disabled = true;
+                                statusEl.textContent = `❌ 無法解析 ${info.label}`;
+                                statusEl.className = 'status-bar error';
+                            }
+                        } else if (isPlayableUrl(info.sourceUrl)) {
+                            playSource(info.sourceUrl);
+                            localStorage.setItem(STORAGE_KEY, idx);
+                            statusEl.textContent = `切換至 ${info.label}`;
+                            statusEl.className = 'status-bar success';
+                        } else {
+                            alert('此來源無法播放');
+                        }
+                    };
+
+                    manualPlayBtn.onclick = () => {
+                        const idx = parseInt(sourceSelect.value, 10);
+                        const info = currentStreamInfos[idx];
+                        if (info && info.streamUrl) window.open(info.streamUrl, '_blank');
+                    };
+
+                    statusEl.style.display = 'none';
+                    outputEl.style.display = 'block';
+                } catch (err) {
+                    console.error('[loadEpisode] 錯誤:', err);
+                    statusEl.textContent = `❌ 載入失敗：${err.message}\n（網址：${episodeUrl}）`;
+                    statusEl.className = 'status-bar error';
+                }
+            }
+
+            // ---------- 初始化 ----------
+            const storedSkip = parseFloat(localStorage.getItem(STORAGE_SKIP_KEY));
+            initSkipInput.value = !isNaN(storedSkip) ? storedSkip : 0;
+            initSkipInput.addEventListener('change', e => {
+                const val = parseFloat(e.target.value);
+                if (isNaN(val) || val < 0) {
+                    e.target.value = 0;
+                    localStorage.setItem(STORAGE_SKIP_KEY, 0);
+                } else {
+                    localStorage.setItem(STORAGE_SKIP_KEY, val);
+                }
+            });
+
+            fullscreenBtn.onclick = () => {
+                if (videoPlayer.requestFullscreen) videoPlayer.requestFullscreen();
+                else if (videoPlayer.webkitRequestFullscreen) videoPlayer.webkitRequestFullscreen();
+                else if (videoPlayer.mozRequestFullScreen) videoPlayer.mozRequestFullScreen();
+                else if (videoPlayer.msRequestFullscreen) videoPlayer.msRequestFullscreen();
+            };
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown' && nextEpisodeUrl) {
+                    e.preventDefault();
+                    loadEpisode(nextEpisodeUrl);
+                }
+                if (e.key === 'ArrowUp') {
+                    const prevBtn = prevBtnContainer.querySelector('button:not([disabled])');
+                    if (prevBtn) { e.preventDefault(); prevBtn.click(); }
+                }
+            });
+
+            loadBtn.addEventListener('click', () => {
+                const url = episodeInput.value.trim();
+                if (!url) { alert('請輸入網址'); return; }
+                try { new URL(url); loadEpisode(url); } catch (_) { alert('網址格式錯誤'); }
+            });
+
+            // ---------- 動畫瀏覽（首頁列表 → 集數 → 播放，按更新年份分組）----------
+            const SITE_KEY = 'anime1one-site';
+            const siteSelect = document.getElementById('site-select');
+            let SITE = localStorage.getItem(SITE_KEY) || 'https://anime1.in';
+            siteSelect.value = SITE;
+            const animeFilter = document.getElementById('anime-filter');
+            const browseReload = document.getElementById('browse-reload');
+            const browseToggle = document.getElementById('browse-toggle');
+            const browseBody = document.getElementById('browse-body');
+            const browseCountEl = document.getElementById('browse-count');
+            const animeListEl = document.getElementById('anime-list');
+            const chapterArea = document.getElementById('chapter-area');
+            const chapterTitleEl = document.getElementById('chapter-title');
+            const chapterListEl = document.getElementById('chapter-list');
+
+            let animeData = [];   // [{slug,name,num,latestUrl,update,updateYear,search}]
+
+            // 由集數網址（onclick）抽出 slug
+            function parseHomeList(html) {
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const seen = new Map();
+                doc.querySelectorAll('#tablepress-1 tbody tr').forEach(tr => {
+                    const link = tr.querySelector('.column-1 a[href]');
+                    const cntCell = tr.querySelector('.column-2');
+                    if (!link || !cntCell) return;
+                    // slug 可能係 anime1.in 的「2026-pinyin」或 anime1.one 的純數字「202671547」
+                    const m = (link.getAttribute('href') || '').match(/^\/([^\/?#]+)\/?$/);
+                    if (!m) return;
+                    const slug = m[1];
+                    if (seen.has(slug)) return;
+                    const name = (link.textContent || '').trim();
+                    const cntText = (cntCell.textContent || '').trim();          // 例：連載中(05) / 連載中(合集)
+                    const numMatch = cntText.match(/(\d+)/);
+                    const cells = tr.querySelectorAll('td');
+                    const update = cells.length ? (cells[cells.length - 2]?.textContent || cells[cells.length - 1]?.textContent || '').trim() : '';
+                    const search = (tr.querySelector('.column-6')?.textContent || '').trim();
+                    seen.set(slug, {
+                        slug, name,
+                        num: numMatch ? parseInt(numMatch[1], 10) : null,
+                        cntText,
+                        latestUrl: new URL(cntCell.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || ('/' + slug), SITE).href,
+                        update,
+                        updateYear: (update.match(/(20\d\d)/) || [])[1] || '其他',
+                        search: (name + ' ' + search).toLowerCase()
+                    });
+                });
+                return [...seen.values()];
+            }
+
+            async function loadAnimeList() {
+                chapterArea.style.display = 'none';
+                animeListEl.textContent = '載入動畫列表中…';
+                try {
+                    const html = await fetchPageHtml(`${SITE}/`);
+                    animeData = parseHomeList(html);
+                    renderAnimeList();
+                } catch (e) {
+                    animeListEl.textContent = `❌ 載入失敗：${e.message}`;
+                }
+            }
+
+            function renderAnimeList() {
+                const q = animeFilter.value.trim().toLowerCase();
+                const filtered = animeData.filter(a => !q || a.search.includes(q) || a.slug.includes(q));
+                browseCountEl.textContent = `共 ${filtered.length} 部`;
+                animeListEl.innerHTML = '';
+                if (!filtered.length) {
+                    animeListEl.innerHTML = '<div style="padding:.4rem;">（無符合的動畫）</div>';
+                    return;
+                }
+                // 按更新年份分組（新→舊），組內維持原本更新順序
+                const groups = {};
+                filtered.forEach(a => { (groups[a.updateYear] = groups[a.updateYear] || []).push(a); });
+                const years = Object.keys(groups).sort((x, y) => (y === '其他' ? -1 : x === '其他' ? 1 : y - x));
+                const frag = document.createDocumentFragment();
+                years.forEach(yr => {
+                    const head = document.createElement('div');
+                    head.textContent = `${yr}${yr === '其他' ? '' : ' 年更新'}（${groups[yr].length}）`;
+                    head.style.cssText = 'padding:.3rem .5rem;background:#0066cc;color:#fff;font-weight:bold;position:sticky;top:0;';
+                    frag.appendChild(head);
+                    groups[yr].forEach(a => {
+                        const d = document.createElement('div');
+                        d.style.cssText = 'padding:.35rem .5rem;cursor:pointer;border-bottom:1px solid #f3f3f3;display:flex;justify-content:space-between;gap:.5rem;';
+                        const nm = document.createElement('span');
+                        nm.textContent = a.name;
+                        const meta = document.createElement('span');
+                        meta.style.cssText = 'color:#888;font-size:.8rem;white-space:nowrap;';
+                        meta.textContent = `${a.cntText} · ${a.update}`;
+                        d.appendChild(nm); d.appendChild(meta);
+                        d.onmouseover = () => d.style.background = '#eef5ff';
+                        d.onmouseout = () => d.style.background = '';
+                        d.onclick = () => loadChapters(a);
+                        frag.appendChild(d);
+                    });
+                });
+                animeListEl.appendChild(frag);
+            }
+
+            async function loadChapters(anime) {
+                chapterArea.style.display = 'block';
+                chapterTitleEl.textContent = `${anime.name} — 準備集數…`;
+                chapterListEl.innerHTML = '';
+                chapterArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                const makeBtn = (label, url) => {
+                    const b = document.createElement('button');
+                    b.className = 'btn';
+                    b.textContent = label;
+                    b.onclick = () => { episodeInput.value = url; loadEpisode(url); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+                    chapterListEl.appendChild(b);
+                };
+
+                if (anime.num && anime.num > 0 && anime.num <= 2000) {
+                    // 由集數數量直接產生每集網址（code = 10 + 三位集數 + 000）
+                    chapterTitleEl.textContent = `${anime.name}（共 ${anime.num} 集）`;
+                    for (let i = 1; i <= anime.num; i++) {
+                        const code = '10' + String(i).padStart(3, '0') + '000';
+                        makeBtn('第 ' + i + ' 集', `${SITE}/${anime.slug}-${code}`);
+                    }
+                } else {
+                    // 合集／無數字 → 退而求其次，去動畫頁抓實際集數連結
+                    try {
+                        const html = await fetchPageHtml(`${SITE}/${anime.slug}/`);
+                        const doc = new DOMParser().parseFromString(html, 'text/html');
+                        const re = new RegExp('^/' + anime.slug + '-([0-9a-z-]+)$');
+                        const seen = new Map();
+                        doc.querySelectorAll('a[href]').forEach(a => {
+                            const href = a.getAttribute('href') || '';
+                            const m = href.match(re);
+                            if (m && !seen.has(href)) seen.set(href, new URL(href, SITE).href);
+                        });
+                        const urls = [...seen.values()];
+                        chapterTitleEl.textContent = `${anime.name}（${anime.cntText}，${urls.length} 項）`;
+                        if (!urls.length) { makeBtn('播放（合集）', anime.latestUrl); return; }
+                        urls.forEach((u, i) => makeBtn('第 ' + (i + 1) + ' 項', u));
+                    } catch (e) {
+                        chapterTitleEl.textContent = `${anime.name} — ${anime.cntText}`;
+                        makeBtn('播放（合集）', anime.latestUrl);
+                    }
+                }
+            }
+
+            animeFilter.oninput = renderAnimeList;
+            siteSelect.onchange = () => {
+                SITE = siteSelect.value;
+                localStorage.setItem(SITE_KEY, SITE);
+                animeFilter.value = '';
+                loadAnimeList();
+            };
+            browseReload.onclick = () => loadAnimeList();
+            browseToggle.onclick = () => {
+                const hidden = browseBody.style.display === 'none';
+                browseBody.style.display = hidden ? '' : 'none';
+                browseToggle.textContent = hidden ? '收合' : '展開';
+            };
+
+            // ---------- 啟動：載入動畫列表（唔再自動載入會失敗的預設集數）----------
+            loadAnimeList();
+        })();
+    </script>
+</body>
+</html>
