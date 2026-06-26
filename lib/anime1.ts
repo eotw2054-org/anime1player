@@ -4,6 +4,7 @@ import { parse } from 'node-html-parser';
 export const SITES: Record<string, string> = {
   in: 'https://anime1.in',
   one: 'https://anime1.one',
+  cc: 'https://anime1.cc',
 };
 
 export interface Anime {

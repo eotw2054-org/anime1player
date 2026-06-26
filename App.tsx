@@ -281,8 +281,11 @@ export default function App() {
   const isLandscape = width >= height;
 
   const [siteKey, setSiteKey] = useState<SiteKey>('in');
-  const [lists, setLists] = useState<Record<string, Anime[]>>({}); // 每個站台一份清單
-  const list = lists[siteKey] ?? []; // 當前站台清單（瀏覽用）
+  const [lists, setLists] = useState<Record<string, Anime[]>>({}); // 每個站台一份清單（合併顯示）
+  // 來源篩選：揀用邊幾個主來源（預設全選）；撳 [A1] 開選單
+  const [enabledSites, setEnabledSites] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(Object.keys(SITES).map((k) => [k, true]))
+  );
   const [loadingList, setLoadingList] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -421,16 +424,26 @@ export default function App() {
   // 載入設定 + 我的最愛
   useEffect(() => {
     (async () => {
-      const [s, sk, fav, fop, srcl, prog] = await Promise.all([
+      const [s, sk, fav, fop, srcl, prog, esites] = await Promise.all([
         AsyncStorage.getItem('site'),
         AsyncStorage.getItem('skip'),
         AsyncStorage.getItem('favorites'),
         AsyncStorage.getItem('fsOnPlay'),
         AsyncStorage.getItem('srcLabel'),
         AsyncStorage.getItem('progress'),
+        AsyncStorage.getItem('enabledSites'),
       ]);
       if (s === 'in' || s === 'one') setSiteKey(s);
       if (sk) setSkip(sk);
+      if (esites) {
+        try {
+          const saved = JSON.parse(esites) as Record<string, boolean>;
+          // 以目前 SITES 為準補齊（新增站台預設開）
+          setEnabledSites(
+            Object.fromEntries(Object.keys(SITES).map((k) => [k, saved[k] ?? true]))
+          );
+        } catch {}
+      }
       if (fop === '1') setFsOnPlay(true);
       if (srcl) setPreferredLabel(srcl);
       if (prog) {
@@ -446,12 +459,12 @@ export default function App() {
     })();
   }, []);
 
+  // 兩站合併：開 app 同時刷新 in + one（cache-first，背景更新）
   useEffect(() => {
-    loadList(siteKey);
-    AsyncStorage.setItem('site', siteKey);
-  }, [siteKey]);
+    (Object.keys(SITES) as SiteKey[]).forEach((s) => loadList(s));
+  }, []);
 
-  // 開 app 即刻由兩站快取 hydrate，等搜尋可以跨站（唔等網路，快）
+  // 開 app 即刻由兩站快取 hydrate，等清單即時有嘢（唔等網路，快）
   useEffect(() => {
     (async () => {
       const entries = await Promise.all(
@@ -655,13 +668,11 @@ export default function App() {
   // ===== 側欄清單分組 =====
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
-    // 搜尋時跨站合併（用已 hydrate 嘅快取，唔等網路）；冇搜尋淨係當前站
+    // 合併揀咗嘅主來源做一個清單（瀏覽 + 搜尋都係）
     const src =
       tab === 'fav'
         ? favorites
-        : q
-        ? (Object.keys(SITES) as SiteKey[]).flatMap((s) => lists[s] ?? [])
-        : list;
+        : (Object.keys(SITES) as SiteKey[]).filter((s) => enabledSites[s]).flatMap((s) => lists[s] ?? []);
     // 去重複：同一套（site|slug）只留第一次出現，維持原本次序
     const seen = new Set<string>();
     const deduped = src.filter((a) => {
@@ -681,7 +692,7 @@ export default function App() {
     return Object.keys(groups)
       .sort((x, y) => (y === '其他' ? -1 : x === '其他' ? 1 : Number(y) - Number(x)))
       .map((yr) => ({ title: yr === '其他' ? '其他' : `${yr} 年更新`, data: groups[yr] }));
-  }, [lists, siteKey, favorites, query, tab]);
+  }, [lists, enabledSites, favorites, query, tab]);
 
   // ===== 焦點輔助（讓遙控器 / 空中滑鼠可操作）=====
   const focusProps = (id: string) => ({
@@ -857,28 +868,44 @@ export default function App() {
   );
 
   // ========= 共用片段 =========
-  const siteLabel = 'anime1.' + siteKey;
+  // 切換某主來源開／關（至少保留一個）
+  const toggleSite = (k: string) => {
+    setEnabledSites((prev) => {
+      const on = Object.values(prev).filter(Boolean).length;
+      if (prev[k] && on <= 1) return prev; // 唔俾熄淨低最後一個
+      const next = { ...prev, [k]: !prev[k] };
+      AsyncStorage.setItem('enabledSites', JSON.stringify(next));
+      return next;
+    });
+  };
+  const enabledCount = Object.values(enabledSites).filter(Boolean).length;
+  const allSites = Object.keys(SITES);
+  const siteSummary = enabledCount === allSites.length ? '全部來源' : `${enabledCount} / ${allSites.length} 來源`;
 
+  // [A1] 品牌按鈕：撳開來源篩選；右側標籤顯示已選來源數
   const SiteBox = (
-    <View style={s.sitePd}>
-      <Pressable
-        {...focusProps('site-cur')}
-        style={[s.spCur, siteOpen && s.spCurOpen, focused('site-cur')]}
-        onPress={() => setSiteOpen((v) => !v)}>
+    <Pressable
+      {...focusProps('site-cur')}
+      style={s.sitePd}
+      onPress={() => setSiteOpen((v) => !v)}>
+      <View style={[s.spCur, s.spBrand, siteOpen && s.spCurOpen, focused('site-cur')]}>
         <View style={s.spDot} />
         <Text style={s.spName} numberOfLines={1}>
-          {siteLabel}
+          {siteSummary}
         </Text>
         <Text style={s.spCar}>{siteOpen ? '▴' : '▾'}</Text>
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 
   const headerBar = (collapse: boolean) => (
     <View style={s.brandRow}>
-      <View style={s.glyph}>
+      <Pressable
+        {...focusProps('a1-filter')}
+        style={[s.glyph, focused('a1-filter')]}
+        onPress={() => setSiteOpen((v) => !v)}>
         <Text style={s.glyphText}>A1</Text>
-      </View>
+      </Pressable>
       {SiteBox}
       {collapse && (
         <Pressable
@@ -906,10 +933,8 @@ export default function App() {
     const k = favKey(item);
     const fav = favSet.has(k);
     const active = selected != null && favKey(selected) === k;
-    // 搜尋時顯示來源站台（跨站搜尋會混入兩站，標籤分得清）
-    const siteTag = query.trim()
-      ? (Object.keys(SITES) as SiteKey[]).find((kk) => SITES[kk] === item.site)
-      : null;
+    // 顯示來源站台（合併清單會混入兩站，標籤分得清）
+    const siteTag = (Object.keys(SITES) as SiteKey[]).find((kk) => SITES[kk] === item.site);
     return (
       <View style={[s.row, active && s.rowActive]}>
         <Pressable
@@ -1137,24 +1162,22 @@ export default function App() {
   const playerHost = isPlaying ? <View style={hostStyle}>{playerNode}</View> : null;
 
   // ========= 來源 / 站台 選單覆蓋 =========
+  // 來源篩選選單（multi-select：揀用邊幾個主來源，預設全選）
   const siteMenu = siteOpen && (
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSiteOpen(false)}>
       <Pressable focusable={false} style={[s.spMenu, isLandscape ? s.spMenuLand : s.spMenuPort]} onPress={() => {}}>
-        {(['in', 'one'] as SiteKey[]).map((k) => {
-          const on = siteKey === k;
+        <Text style={s.srcMenuTitle}>來源（可多選）</Text>
+        {allSites.map((k) => {
+          const on = !!enabledSites[k];
           return (
             <Pressable
               key={k}
               focusable={false}
               style={[s.spOpt, on && s.spOptOn]}
-              onPress={() => {
-                setSiteKey(k);
-                setSelected(null);
-                setSiteOpen(false);
-              }}>
+              onPress={() => toggleSite(k)}>
               <View style={[s.spDot, !on && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
               <Text style={[s.spOptText, on && s.spOptTextOn]}>anime1.{k}</Text>
-              {on && <Text style={s.spOptCk}>✓</Text>}
+              <Text style={s.spOptCk}>{on ? '✓' : ''}</Text>
             </Pressable>
           );
         })}
@@ -1278,9 +1301,12 @@ export default function App() {
       <StatusBar style="light" hidden={fullscreen} />
       {!fullscreen && (
         <View style={s.appbar}>
-          <View style={s.glyph}>
+          <Pressable
+            {...focusProps('a1-filter')}
+            style={[s.glyph, focused('a1-filter')]}
+            onPress={() => setSiteOpen((v) => !v)}>
             <Text style={s.glyphText}>A1</Text>
-          </View>
+          </Pressable>
           {SiteBox}
           <View style={{ flex: 1 }} />
           <Pressable
@@ -1380,6 +1406,7 @@ const s = StyleSheet.create({
     paddingVertical: 7,
   },
   spCurOpen: { borderColor: 'rgba(255,77,141,0.5)' },
+  spBrand: { borderColor: 'rgba(155,92,255,0.4)' },
   spDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.cyan, shadowColor: C.cyan, shadowRadius: 6, shadowOpacity: 1 },
   spName: { color: C.text, fontSize: 13, fontWeight: '800', flex: 1 },
   spCar: { color: C.muted, fontSize: 11 },
