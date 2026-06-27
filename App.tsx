@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   BackHandler,
   DeviceEventEmitter,
   FlatList,
@@ -30,6 +31,14 @@ import {
   isPlayable,
 } from './lib/anime1';
 import { getAdRanges, adSkipTarget, type AdRange } from './lib/adskip';
+import {
+  signup as syncSignup,
+  login as syncLogin,
+  pull as syncPull,
+  push as syncPush,
+  mergeFavorites,
+  mergeByRecency,
+} from './lib/sync';
 
 // ===== 配色（style3 vibrant streaming base）=====
 const C = {
@@ -73,6 +82,7 @@ interface Progress {
   url: string;
   ep: string;
   time: number;
+  at?: number;
 }
 
 const favKey = (a: { site: string; slug: string }) => a.site + '|' + a.slug;
@@ -95,12 +105,18 @@ function PlayerOverlay(props: {
   onPrev: () => void;
   onNext: () => void;
   onToggleFs: () => void;
+  mark: { start?: number; end?: number; at?: number } | undefined;
+  onSetStart: () => void;
+  onSetEnd: () => void;
+  onClearStart: () => void;
+  onClearEnd: () => void;
   focusProps: (id: string) => any;
   focused: (id: string) => any;
 }) {
   const {
     player, current, ctrlShown, fullscreen,
-    showControls, hideControls, onPrev, onNext, onToggleFs, focusProps, focused,
+    showControls, hideControls, onPrev, onNext, onToggleFs,
+    mark, onSetStart, onSetEnd, onClearStart, onClearEnd, focusProps, focused,
   } = props;
   const [pos, setPos] = useState({ t: 0, d: 0 });
   const [playing, setPlaying] = useState(true);
@@ -252,6 +268,32 @@ function PlayerOverlay(props: {
             <Text style={s.fsToggleText}>{fullscreen ? '⤢ 退出全螢幕' : '⛶ 全螢幕'}</Text>
           </Pressable>
 
+          {/* 開頭／結尾 標記（設開頭貼左、設結尾貼右）—— 可 touch + 遙控/空中滑鼠 focus */}
+          {current && (
+            <View style={s.markRow} pointerEvents="box-none">
+              <View style={s.markGroup}>
+                <Pressable {...focusProps('set-start')} style={[s.markBtn, focused('set-start')]} onPress={onSetStart}>
+                  <Text style={s.markBtnText}>⏮ 設開頭 {mark?.start == null ? '—' : fmtTime(mark.start)}</Text>
+                </Pressable>
+                {mark?.start != null && (
+                  <Pressable {...focusProps('clr-start')} style={[s.markClear, focused('clr-start')]} onPress={onClearStart}>
+                    <Text style={s.markClearText}>✕</Text>
+                  </Pressable>
+                )}
+              </View>
+              <View style={s.markGroup}>
+                {mark?.end != null && (
+                  <Pressable {...focusProps('clr-end')} style={[s.markClear, focused('clr-end')]} onPress={onClearEnd}>
+                    <Text style={s.markClearText}>✕</Text>
+                  </Pressable>
+                )}
+                <Pressable {...focusProps('set-end')} style={[s.markBtn, focused('set-end')]} onPress={onSetEnd}>
+                  <Text style={s.markBtnText}>設結尾 {mark?.end == null ? '—' : fmtTime(mark.end)} ⏭</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
           {/* 底部：時間 + 進度條（可拖） */}
           <View style={s.seekRow} pointerEvents="box-none">
             <Text style={s.timeText}>
@@ -293,6 +335,9 @@ export default function App() {
 
   const [favorites, setFavorites] = useState<Anime[]>([]);
   const favSet = useMemo(() => new Set(favorites.map(favKey)), [favorites]);
+  useEffect(() => {
+    favoritesRef.current = favorites;
+  }, [favorites]);
 
   const [selected, setSelected] = useState<Anime | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -349,11 +394,26 @@ export default function App() {
     setSrcHi(i);
   };
 
-  const [skip, setSkip] = useState('0');
-  const skipRef = useRef(0);
-  useEffect(() => {
-    skipRef.current = parseFloat(skip) || 0;
-  }, [skip]);
+  // 逐套 Start/End 標記（key = site|slug）；marksRef 俾一次性 listener 讀最新值
+  const [marks, setMarks] = useState<Record<string, { start?: number; end?: number; at?: number }>>({});
+  const marksRef = useRef<Record<string, { start?: number; end?: number; at?: number }>>({});
+  const startAtRef = useRef<number | null>(null); // 今次載入要套用嘅開頭（喺 replace 前擷取）
+  const endFiredRef = useRef(false); // 今次載入已觸發 End 跳集
+  const endArmedRef = useRef(false); // 觀察到 currentTime < end 後先 arm
+  const lastAdvanceRef = useRef(0); // 上次 End 自動跳集時間（wall-clock rate-limit）
+  const focusKeyRef = useRef<string | null>(null); // 俾 hwKey 讀目前 focus（遙控設標記）
+
+  // 雲端同步（登入後 favorites/progress/marks 跨裝置）
+  const [syncUser, setSyncUser] = useState<string | null>(null);
+  const syncTokenRef = useRef<string | null>(null);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [syncName, setSyncName] = useState('');
+  const [syncPass, setSyncPass] = useState('');
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncingNow, setSyncingNow] = useState(false);
+  const [syncErr, setSyncErr] = useState<string | null>(null);
+  const favoritesRef = useRef<Anime[]>([]);
+  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const player = useVideoPlayer(null, (p) => {
     p.loop = false;
@@ -376,11 +436,13 @@ export default function App() {
             player.currentTime = resumeAtRef.current;
           } catch {}
           resumeAtRef.current = null;
-        } else if (skipRef.current > 0) {
+        } else if (startAtRef.current != null && startAtRef.current > 0) {
+          // 逐套開頭：跳過片頭（取代舊全域跳秒）
           try {
-            player.currentTime = skipRef.current;
+            player.currentTime = startAtRef.current;
           } catch {}
         }
+        startAtRef.current = null;
       }
       player.play();
     }
@@ -407,34 +469,75 @@ export default function App() {
         adNoteTimer.current = setTimeout(() => setAdSkipNote(false), 1800);
       }
     }
-    progressRef.current[favKey(c.anime)] = { url: c.episodeUrl, ep: c.episodeNo, time: t };
+    // 逐套 End：到結尾自動跳下一集（多重保護避免「整個系列秒跳」）
+    const mk = marksRef.current[favKey(c.anime)];
+    const end = mk?.end;
+    const start = mk?.start ?? 0;
+    if (end != null && end > start && seekedRef.current) {
+      if (!endArmedRef.current && t < end) endArmedRef.current = true; // 觀察到 t<end 先 arm
+      if (
+        endArmedRef.current &&
+        !endFiredRef.current &&
+        t >= end &&
+        c.nextUrl &&
+        Date.now() - lastAdvanceRef.current > 5000
+      ) {
+        endFiredRef.current = true;
+        lastAdvanceRef.current = Date.now();
+        // 防 resume 中毒：將進度指去下一集（time 0），唔好停喺被跳過嗰集嘅結尾
+        progressRef.current[favKey(c.anime)] = { url: c.nextUrl, ep: c.episodeNo, time: 0, at: Date.now() };
+        AsyncStorage.setItem('progress', JSON.stringify(progressRef.current));
+        scheduleSyncPush();
+        playEpisode(c.nextUrl, c.anime);
+        return;
+      }
+    }
+    // 已觸發 End → 停止為當前 load 再寫進度（避免再寫返結尾位置）
+    if (endFiredRef.current) return;
+
+    progressRef.current[favKey(c.anime)] = { url: c.episodeUrl, ep: c.episodeNo, time: t, at: Date.now() };
     const now = Date.now();
     if (now - lastSaveRef.current > 5000) {
       lastSaveRef.current = now;
       AsyncStorage.setItem('progress', JSON.stringify(progressRef.current));
+      scheduleSyncPush();
     }
   });
 
   // 播完自動跳下一集
   useEventListener(player, 'playToEnd', () => {
     const c = currentRef.current;
-    if (c?.nextUrl) playEpisode(c.nextUrl);
+    if (c?.nextUrl) playEpisode(c.nextUrl, c.anime);
   });
 
   // 載入設定 + 我的最愛
   useEffect(() => {
     (async () => {
-      const [s, sk, fav, fop, srcl, prog, esites] = await Promise.all([
+      const [s, mk, fav, fop, srcl, prog, esites, sUser, sToken] = await Promise.all([
         AsyncStorage.getItem('site'),
-        AsyncStorage.getItem('skip'),
+        AsyncStorage.getItem('marks'),
         AsyncStorage.getItem('favorites'),
         AsyncStorage.getItem('fsOnPlay'),
         AsyncStorage.getItem('srcLabel'),
         AsyncStorage.getItem('progress'),
         AsyncStorage.getItem('enabledSites'),
+        AsyncStorage.getItem('syncUser'),
+        AsyncStorage.getItem('syncToken'),
       ]);
+      if (sUser && sToken) {
+        setSyncUser(sUser);
+        syncTokenRef.current = sToken;
+      }
       if (s === 'in' || s === 'one') setSiteKey(s);
-      if (sk) setSkip(sk);
+      if (mk) {
+        try {
+          const parsed = JSON.parse(mk);
+          if (parsed && typeof parsed === 'object') {
+            marksRef.current = parsed;
+            setMarks(parsed);
+          }
+        } catch {}
+      }
       if (esites) {
         try {
           const saved = JSON.parse(esites) as Record<string, boolean>;
@@ -453,7 +556,26 @@ export default function App() {
       }
       if (fav) {
         try {
-          setFavorites(JSON.parse(fav));
+          const arr = JSON.parse(fav);
+          favoritesRef.current = arr;
+          setFavorites(arr);
+        } catch {}
+      }
+      // 已登入 → 開 app 即刻拉一次雲端最新，merge 落本機
+      if (sUser && sToken) {
+        try {
+          const remote = await syncPull(sToken);
+          const mf = mergeFavorites(favoritesRef.current, remote.favorites || [], favKey);
+          const mp = mergeByRecency(progressRef.current, remote.progress || {});
+          const mm = mergeByRecency(marksRef.current, remote.marks || {});
+          favoritesRef.current = mf;
+          setFavorites(mf);
+          AsyncStorage.setItem('favorites', JSON.stringify(mf));
+          progressRef.current = mp;
+          AsyncStorage.setItem('progress', JSON.stringify(mp));
+          marksRef.current = mm;
+          setMarks(mm);
+          AsyncStorage.setItem('marks', JSON.stringify(mm));
         } catch {}
       }
     })();
@@ -521,6 +643,8 @@ export default function App() {
         ? prev.filter((x) => favKey(x) !== k)
         : [{ ...a }, ...prev];
       AsyncStorage.setItem('favorites', JSON.stringify(next));
+      favoritesRef.current = next;
+      scheduleSyncPush();
       return next;
     });
   }
@@ -570,6 +694,8 @@ export default function App() {
       const pref = preferredRef.current;
       let idx = pref ? info.streams.findIndex((x) => x.label === pref) : -1;
       if (idx < 0) idx = 0;
+      // 喺 replace 之前擷取呢套嘅開頭（readyToPlay 用 startAtRef，唔靠未更新嘅 currentRef）
+      startAtRef.current = marksRef.current[favKey(anime)]?.start ?? null;
       const ok = await loadStream(info.streams, idx);
       setCurrent({
         anime,
@@ -631,6 +757,8 @@ export default function App() {
       headers: { 'User-Agent': UA, Referer: referer },
     };
     seekedRef.current = false; // 新來源 → 容許一次初始 seek
+    endFiredRef.current = false; // 新來源 → 重置 End 觸發
+    endArmedRef.current = false; // 新來源 → 重新 arm（觀察到 t<end 先生效）
     adRangesRef.current = []; // 新來源 → 清空舊廣告區間
     player.replace(source);
     // 背景偵測廣告（唔阻塞播放）；用同播放一致嘅 headers 避免被 CDN 擋
@@ -697,8 +825,14 @@ export default function App() {
   // ===== 焦點輔助（讓遙控器 / 空中滑鼠可操作）=====
   const focusProps = (id: string) => ({
     focusable: true,
-    onFocus: () => setFocusKey(id),
-    onBlur: () => setFocusKey((k) => (k === id ? null : k)),
+    onFocus: () => {
+      focusKeyRef.current = id;
+      setFocusKey(id);
+    },
+    onBlur: () => {
+      if (focusKeyRef.current === id) focusKeyRef.current = null;
+      setFocusKey((k) => (k === id ? null : k));
+    },
   });
   const focused = (id: string) => (focusKey === id ? s.focused : null);
 
@@ -780,6 +914,151 @@ export default function App() {
     };
   }, [current?.episodeUrl, fullscreen, isPlaying]);
 
+  // 雲端同步：由雲端拉一次 → 合併落本機（favorites 聯集、progress/marks 較新者勝）
+  const pullMerge = async () => {
+    const token = syncTokenRef.current;
+    if (!token) return;
+    try {
+      const remote = await syncPull(token);
+      const mf = mergeFavorites(favoritesRef.current, remote.favorites || [], favKey);
+      const mp = mergeByRecency(progressRef.current, remote.progress || {});
+      const mm = mergeByRecency(marksRef.current, remote.marks || {});
+      favoritesRef.current = mf;
+      setFavorites(mf);
+      AsyncStorage.setItem('favorites', JSON.stringify(mf));
+      progressRef.current = mp;
+      AsyncStorage.setItem('progress', JSON.stringify(mp));
+      marksRef.current = mm;
+      setMarks(mm);
+      AsyncStorage.setItem('marks', JSON.stringify(mm));
+    } catch {}
+  };
+
+  // 雲端同步：debounce 推上去（登入咗先做）
+  const scheduleSyncPush = () => {
+    if (!syncTokenRef.current) return;
+    if (pushTimer.current) clearTimeout(pushTimer.current);
+    pushTimer.current = setTimeout(() => {
+      const token = syncTokenRef.current;
+      if (!token) return;
+      syncPush(token, {
+        favorites: favoritesRef.current,
+        progress: progressRef.current,
+        marks: marksRef.current,
+      }).catch(() => {});
+    }, 2500);
+  };
+
+  // 登入 / 註冊：攞 token → pull → 合併 → 套用 → push 返
+  const doAuth = async (mode: 'login' | 'signup') => {
+    const name = syncName.trim();
+    if (!name || !syncPass) {
+      setSyncErr('請輸入帳號同密碼');
+      return;
+    }
+    setSyncBusy(true);
+    setSyncErr(null);
+    try {
+      const token = mode === 'signup' ? await syncSignup(name, syncPass) : await syncLogin(name, syncPass);
+      const remote = await syncPull(token);
+      const mergedFav = mergeFavorites(favoritesRef.current, remote.favorites || [], favKey);
+      const mergedProg = mergeByRecency(progressRef.current, remote.progress || {});
+      const mergedMarks = mergeByRecency(marksRef.current, remote.marks || {});
+      // 套用落本機
+      favoritesRef.current = mergedFav;
+      setFavorites(mergedFav);
+      AsyncStorage.setItem('favorites', JSON.stringify(mergedFav));
+      progressRef.current = mergedProg;
+      AsyncStorage.setItem('progress', JSON.stringify(mergedProg));
+      marksRef.current = mergedMarks;
+      setMarks(mergedMarks);
+      AsyncStorage.setItem('marks', JSON.stringify(mergedMarks));
+      // 記住 session
+      syncTokenRef.current = token;
+      setSyncUser(name);
+      AsyncStorage.setItem('syncUser', name);
+      AsyncStorage.setItem('syncToken', token);
+      // 把合併結果推返雲端
+      syncPush(token, { favorites: mergedFav, progress: mergedProg, marks: mergedMarks }).catch(() => {});
+      setSyncOpen(false);
+      setSyncPass('');
+    } catch (e: any) {
+      setSyncErr(e?.message || '失敗');
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+  const doLogout = () => {
+    syncTokenRef.current = null;
+    setSyncUser(null);
+    AsyncStorage.removeItem('syncToken');
+    AsyncStorage.removeItem('syncUser');
+    setSyncOpen(false);
+  };
+
+  // 手動同步：即刻 pull 合併 + push 返（雙向）
+  const doSyncNow = async () => {
+    const token = syncTokenRef.current;
+    if (!token) return;
+    setSyncingNow(true);
+    try {
+      await pullMerge();
+      await syncPush(token, {
+        favorites: favoritesRef.current,
+        progress: progressRef.current,
+        marks: marksRef.current,
+      });
+    } catch {}
+    setSyncingNow(false);
+  };
+
+  // 自動更新：登入期間每 60 秒 pull 一次，並喺 app 返到前台即刻 pull
+  useEffect(() => {
+    if (!syncUser) return;
+    const id = setInterval(() => {
+      pullMerge();
+    }, 60000);
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') pullMerge();
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
+  }, [syncUser]);
+
+  // 逐套 Start/End 標記：寫入 marksRef + state，並即時持久化（唔跟進度 5s throttle）
+  const saveMarks = (next: Record<string, { start?: number; end?: number; at?: number }>) => {
+    marksRef.current = next;
+    setMarks(next);
+    AsyncStorage.setItem('marks', JSON.stringify(next));
+    scheduleSyncPush();
+  };
+  const setMarkField = (field: 'start' | 'end') => {
+    const c = currentRef.current;
+    if (!c) return;
+    let tt = NaN;
+    try {
+      tt = player.currentTime;
+    } catch {}
+    if (!isFinite(tt)) return;
+    const k = favKey(c.anime);
+    saveMarks({
+      ...marksRef.current,
+      [k]: { ...marksRef.current[k], [field]: Math.max(0, Math.floor(tt)), at: Date.now() },
+    });
+    showControls();
+  };
+  const clearMarkField = (field: 'start' | 'end') => {
+    const c = currentRef.current;
+    if (!c) return;
+    const k = favKey(c.anime);
+    const m = { ...marksRef.current[k], at: Date.now() };
+    delete m[field];
+    saveMarks({ ...marksRef.current, [k]: m });
+    showControls();
+  };
+
   // 返回鍵：選單 / 全螢幕時 → 收起（唔關 app）；否則行預設（離開 app）
   useEffect(() => {
     const onBack = () => {
@@ -820,7 +1099,13 @@ export default function App() {
       const c = currentRef.current;
       try {
         if (name === 'ok') {
-          if (player.playing) player.pause();
+          // 若 focus 喺標記掣 → OK 設／清標記；否則播放/暫停
+          const fk = focusKeyRef.current;
+          if (fk === 'set-start') setMarkField('start');
+          else if (fk === 'set-end') setMarkField('end');
+          else if (fk === 'clr-start') clearMarkField('start');
+          else if (fk === 'clr-end') clearMarkField('end');
+          else if (player.playing) player.pause();
           else player.play();
         } else if (name === 'up') {
           if (c?.prevUrl) playEpisode(c.prevUrl, c.anime);
@@ -861,6 +1146,11 @@ export default function App() {
         onPrev={() => current?.prevUrl && playEpisode(current.prevUrl)}
         onNext={() => current?.nextUrl && playEpisode(current.nextUrl)}
         onToggleFs={() => setFullscreen((f) => !f)}
+        mark={current ? marks[favKey(current.anime)] : undefined}
+        onSetStart={() => setMarkField('start')}
+        onSetEnd={() => setMarkField('end')}
+        onClearStart={() => clearMarkField('start')}
+        onClearEnd={() => clearMarkField('end')}
         focusProps={focusProps}
         focused={focused}
       />
@@ -907,6 +1197,17 @@ export default function App() {
         <Text style={s.glyphText}>A1</Text>
       </Pressable>
       {SiteBox}
+      <Pressable
+        {...focusProps('sync')}
+        style={[s.cloudBtn, syncUser && s.cloudBtnOn, focused('sync')]}
+        onPress={() => {
+          setSyncErr(null);
+          setSyncOpen(true);
+        }}>
+        <Text style={[s.cloudText, syncUser && s.cloudTextOn]} numberOfLines={1}>
+          {syncUser ? '☁ ' + syncUser : '☁'}
+        </Text>
+      </Pressable>
       {collapse && (
         <Pressable
           {...focusProps('sb-collapse')}
@@ -1057,23 +1358,9 @@ export default function App() {
     </View>
   );
 
-  // 設定（跳秒 + 來源 一行）
+  // 設定（來源 一行）
   const settingsRow = current && (
     <View style={s.settingsRow}>
-      <View style={s.skipField}>
-        <Text style={s.skipLabel}>跳秒</Text>
-        <TextInput
-          onFocus={() => setFocusKey('skip')}
-          onBlur={() => setFocusKey((k) => (k === 'skip' ? null : k))}
-          style={[s.skipInput, focused('skip')]}
-          keyboardType="numeric"
-          value={skip}
-          onChangeText={(t) => {
-            setSkip(t);
-            AsyncStorage.setItem('skip', t);
-          }}
-        />
-      </View>
       {current.streams.length > 0 && (
         <Pressable
           {...focusProps('src-sel')}
@@ -1221,6 +1508,74 @@ export default function App() {
     </Pressable>
   );
 
+  // ========= 雲端同步登入 =========
+  const syncModal = syncOpen && (
+    <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSyncOpen(false)}>
+      <Pressable focusable={false} style={s.syncCard} onPress={() => {}}>
+        <Text style={s.syncTitle}>☁ 雲端同步</Text>
+        <Text style={s.syncSub}>登入後，我的最愛 / 觀看進度 / 開始結束時間 跨裝置同步</Text>
+        {syncUser ? (
+          <>
+            <Text style={s.syncWho}>已登入：{syncUser}</Text>
+            <Text style={s.syncSub}>每 60 秒自動同步；亦可手動即刻同步</Text>
+            <Pressable
+              {...focusProps('sync-now')}
+              disabled={syncingNow}
+              style={[s.syncBtn, focused('sync-now')]}
+              onPress={doSyncNow}>
+              <Text style={s.syncBtnText}>{syncingNow ? '同步中…' : '🔄 立即同步'}</Text>
+            </Pressable>
+            <Pressable
+              {...focusProps('sync-logout')}
+              style={[s.syncBtnGhost, focused('sync-logout')]}
+              onPress={doLogout}>
+              <Text style={s.syncBtnGhostText}>登出</Text>
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <TextInput
+              style={s.syncInput}
+              placeholder="帳號"
+              placeholderTextColor={C.muted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={syncName}
+              onChangeText={setSyncName}
+            />
+            <TextInput
+              style={s.syncInput}
+              placeholder="密碼"
+              placeholderTextColor={C.muted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              value={syncPass}
+              onChangeText={setSyncPass}
+            />
+            {syncErr && <Text style={s.syncErr}>{syncErr}</Text>}
+            <View style={s.syncRow}>
+              <Pressable
+                {...focusProps('sync-login')}
+                disabled={syncBusy}
+                style={[s.syncBtn, { flex: 1 }, focused('sync-login')]}
+                onPress={() => doAuth('login')}>
+                <Text style={s.syncBtnText}>{syncBusy ? '…' : '登入'}</Text>
+              </Pressable>
+              <Pressable
+                {...focusProps('sync-signup')}
+                disabled={syncBusy}
+                style={[s.syncBtnGhost, { flex: 1 }, focused('sync-signup')]}
+                onPress={() => doAuth('signup')}>
+                <Text style={s.syncBtnGhostText}>註冊</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+      </Pressable>
+    </Pressable>
+  );
+
   // ========= LANDSCAPE =========
   if (isLandscape) {
     return (
@@ -1291,6 +1646,7 @@ export default function App() {
         {playerHost}
         {siteMenu}
         {sourceMenu}
+        {syncModal}
       </View>
     );
   }
@@ -1309,6 +1665,17 @@ export default function App() {
           </Pressable>
           {SiteBox}
           <View style={{ flex: 1 }} />
+          <Pressable
+            {...focusProps('sync')}
+            style={[s.cloudBtn, syncUser && s.cloudBtnOn, focused('sync')]}
+            onPress={() => {
+              setSyncErr(null);
+              setSyncOpen(true);
+            }}>
+            <Text style={[s.cloudText, syncUser && s.cloudTextOn]} numberOfLines={1}>
+              {syncUser ? '☁ ' + syncUser : '☁'}
+            </Text>
+          </Pressable>
           <Pressable
             {...focusProps('fav-filter')}
             style={[s.favFilter, tab === 'fav' && s.favFilterOn, focused('fav-filter')]}
@@ -1355,6 +1722,7 @@ export default function App() {
       {playerHost}
       {siteMenu}
       {sourceMenu}
+      {syncModal}
     </View>
   );
 }
@@ -1508,21 +1876,8 @@ const s = StyleSheet.create({
   epText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   epTextOn: { color: '#fff' },
 
-  // settings row (跳秒 + 來源)
+  // settings row (來源)
   settingsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  skipField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: C.bg,
-    borderWidth: 1,
-    borderColor: C.line2,
-    borderRadius: 9,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  skipLabel: { color: C.cyan, fontSize: 12, fontWeight: '700' },
-  skipInput: { color: C.text, fontSize: 13, fontWeight: '800', minWidth: 36, padding: 0, textAlign: 'center' },
   srcBar: {
     flex: 1,
     flexDirection: 'row',
@@ -1587,6 +1942,58 @@ const s = StyleSheet.create({
   srcItemCk: { color: C.good, fontSize: 12, marginLeft: 6 },
   srcNote: { color: C.mutedDim, fontSize: 10, marginTop: 6, paddingHorizontal: 4 },
 
+  // ===== 雲端同步 =====
+  cloudBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: 120,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: C.line2,
+    backgroundColor: C.bg,
+  },
+  cloudBtnOn: { borderColor: 'rgba(91,230,168,0.5)', backgroundColor: 'rgba(91,230,168,0.12)' },
+  cloudText: { color: C.muted, fontSize: 12, fontWeight: '800' },
+  cloudTextOn: { color: C.good },
+  syncCard: {
+    width: 320,
+    maxWidth: '90%',
+    backgroundColor: C.surface,
+    borderWidth: 1,
+    borderColor: C.line2,
+    borderRadius: 16,
+    padding: 18,
+    gap: 10,
+  },
+  syncTitle: { color: C.text, fontSize: 18, fontWeight: '900' },
+  syncSub: { color: C.muted, fontSize: 12, lineHeight: 17, marginBottom: 4 },
+  syncWho: { color: C.good, fontSize: 14, fontWeight: '800', marginBottom: 4 },
+  syncInput: {
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    borderColor: C.line2,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: C.text,
+    fontSize: 14,
+  },
+  syncErr: { color: '#ff7a90', fontSize: 12 },
+  syncRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  syncBtn: { backgroundColor: C.rose, borderRadius: 11, paddingVertical: 12, alignItems: 'center' },
+  syncBtnText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  syncBtnGhost: {
+    borderRadius: 11,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.line2,
+    backgroundColor: C.bg,
+  },
+  syncBtnGhostText: { color: C.text, fontSize: 14, fontWeight: '800' },
+
   // ===== Portrait =====
   appbar: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 12, paddingVertical: 8 },
 
@@ -1609,6 +2016,13 @@ const s = StyleSheet.create({
   fsToggle: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(11,14,26,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   fsToggleFs: { top: 40, right: 30, backgroundColor: 'rgba(255,77,141,0.92)', borderColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   fsToggleText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  // 開頭／結尾 標記掣（進度條上方，左／右分佈）
+  markRow: { position: 'absolute', left: 14, right: 14, bottom: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  markGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  markBtn: { backgroundColor: 'rgba(11,14,26,0.6)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
+  markBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  markClear: { width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(255,77,141,0.85)', alignItems: 'center', justifyContent: 'center' },
+  markClearText: { color: '#fff', fontSize: 13, fontWeight: '900' },
   seekRow: { position: 'absolute', left: 14, right: 14, bottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   timeText: { color: '#fff', fontSize: 12, fontWeight: '700', minWidth: 92 },
   seekBarWrap: { flex: 1, height: 22, justifyContent: 'center' },

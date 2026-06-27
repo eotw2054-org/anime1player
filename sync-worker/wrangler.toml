@@ -1,0 +1,7 @@
+name = "animeplayer-sync"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Secrets（唔寫喺度，用 `wrangler secret put` 設定）：
+#   TURSO_DATABASE_URL
+#   TURSO_AUTH_TOKEN
