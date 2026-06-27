@@ -2,6 +2,7 @@
   "expo": {
     "name": "Anime1 Player",
     "slug": "rn-app",
+    "owner": "eotw2054s-team",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -24,6 +25,20 @@
     },
     "plugins": [
       "expo-video"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/313eb4ec-182a-4cb3-82c2-97bf209ba6a6",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    }
   }
 }

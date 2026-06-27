@@ -18,6 +18,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
+import * as Updates from 'expo-updates';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -412,6 +413,7 @@ export default function App() {
   const [syncBusy, setSyncBusy] = useState(false);
   const [syncingNow, setSyncingNow] = useState(false);
   const [syncErr, setSyncErr] = useState<string | null>(null);
+  const [updateReady, setUpdateReady] = useState(false); // OTA：已下載新版本，等用戶確認 reload
   const favoritesRef = useRef<Anime[]>([]);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1027,6 +1029,37 @@ export default function App() {
     };
   }, [syncUser]);
 
+  // OTA 更新：production build 啟動時 + 返到前台時，靜靜雞 check + download，有新版先彈提示
+  useEffect(() => {
+    if (__DEV__) return; // dev 行 Metro，唔好 OTA
+    let alive = true;
+    const check = async () => {
+      try {
+        const res = await Updates.checkForUpdateAsync();
+        if (!res.isAvailable) return;
+        const fetched = await Updates.fetchUpdateAsync();
+        if (alive && fetched.isNew) setUpdateReady(true);
+      } catch {
+        // 冇網 / server 錯 → 靜默，唔好阻住用 app
+      }
+    };
+    check();
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') check();
+    });
+    return () => {
+      alive = false;
+      sub.remove();
+    };
+  }, []);
+  const applyUpdate = async () => {
+    try {
+      await Updates.reloadAsync(); // 載入啱啱 fetch 落嘅新 bundle，即時生效
+    } catch {
+      setUpdateReady(false);
+    }
+  };
+
   // 逐套 Start/End 標記：寫入 marksRef + state，並即時持久化（唔跟進度 5s throttle）
   const saveMarks = (next: Record<string, { start?: number; end?: number; at?: number }>) => {
     marksRef.current = next;
@@ -1576,6 +1609,27 @@ export default function App() {
     </Pressable>
   );
 
+  const updateModal = updateReady && (
+    <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setUpdateReady(false)}>
+      <Pressable focusable={false} style={s.syncCard} onPress={() => {}}>
+        <Text style={s.syncTitle}>✨ 有新版本</Text>
+        <Text style={s.syncSub}>已下載最新版本，立即重新載入即可更新。</Text>
+        <Pressable
+          {...focusProps('ota-apply')}
+          style={[s.syncBtn, focused('ota-apply')]}
+          onPress={applyUpdate}>
+          <Text style={s.syncBtnText}>立即更新</Text>
+        </Pressable>
+        <Pressable
+          {...focusProps('ota-later')}
+          style={[s.syncBtnGhost, focused('ota-later')]}
+          onPress={() => setUpdateReady(false)}>
+          <Text style={s.syncBtnGhostText}>遲啲</Text>
+        </Pressable>
+      </Pressable>
+    </Pressable>
+  );
+
   // ========= LANDSCAPE =========
   if (isLandscape) {
     return (
@@ -1647,6 +1701,7 @@ export default function App() {
         {siteMenu}
         {sourceMenu}
         {syncModal}
+        {updateModal}
       </View>
     );
   }
@@ -1723,6 +1778,7 @@ export default function App() {
       {siteMenu}
       {sourceMenu}
       {syncModal}
+      {updateModal}
     </View>
   );
 }

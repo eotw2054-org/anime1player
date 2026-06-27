@@ -1,3 +1,22 @@
 # Expo HAS CHANGED
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before writing any code.
+
+# Deploying 改動：兩種節奏
+
+呢個 app 用緊 **EAS Update (OTA)**(project `@eotw2054s-team/rn-app`,channel `production`)。
+
+- **純 JS 改動**(`App.tsx`、`lib/*`、純 JS deps)→ 唔使 build APK:
+  ```sh
+  npx eas-cli update --channel production -m "說明"
+  ```
+  手機開 app 自動 download,彈「✨ 有新版本」→ 撳即時 reload。
+
+- **郁到 native**(加/升/拆 native module、改 `app.json` 嘅 `plugins`/權限/icon、升 `expo`/`react-native`)→ `runtimeVersion` 嘅 **fingerprint** 會變,**必須重 build + 重新 sideload APK**,舊 APK 收唔到之後嘅 OTA:
+  ```sh
+  npx expo prebuild -p android --clean   # /android 係 gitignored,由 app.json 生成
+  & "$PWD\android\gradlew.bat" assembleRelease -p "$PWD\android"
+  # → android/app/build/outputs/apk/release/app-release.apk，sideload + 可 copy 去 Z:\Project\AnimePlayer
+  ```
+
+OTA 只換 JS bundle,換唔到 native；`sync-worker/`(Cloudflare)係獨立,用佢自己嘅 `wrangler deploy`。
