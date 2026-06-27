@@ -8,6 +8,7 @@
     "expo": "~56.0.12",
     "expo-keep-awake": "~56.0.3",
     "expo-status-bar": "~56.0.4",
+    "expo-updates": "~56.0.19",
     "expo-video": "~56.1.4",
     "node-html-parser": "^8.0.2",
     "react": "19.2.3",
