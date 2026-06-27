@@ -24,17 +24,23 @@
 
 ## 4. Baseline build(一次性)
 
-- [x] 4.1 `gradlew assembleRelease` → `app-release.apk`(73.6 MB,帶 expo-updates)
-- [ ] 4.2 **【要你部機】** Sideload 安裝呢個新 APK 做 baseline(舊 APK 收唔到 OTA)
+- [x] 4.1 `gradlew assembleRelease` → `app-release.apk`(73.6 MB,帶 expo-updates,runtime `1.0.0`)
+- [x] 4.2 Sideload 安裝新 APK 做 baseline(用戶已裝)
 - [x] 4.3 copy 去 `Z:\Project\AnimePlayer\app-release.apk`
+
+## 4b. 🐞 Fingerprint 分歧 → 改靜態 runtime(multi-agent RCA 證實)
+
+- [x] 4b.1 症狀:裝咗 baseline、push 咗 update,但部機**完全唔彈**提示
+- [x] 4b.2 根因(拆 APK 證實):APK 內嵌 `assets/fingerprint` = `47b0d15c…` ≠ `eas update` 計嘅 `702eac7f…` → server 當「無 compatible update」
+- [x] 4b.3 Fix:`app.json` `runtimeVersion` 由 `{policy:"fingerprint"}` 改 **`"1.0.0"`** 靜態 → `prebuild --clean` → 重 build APK(strings.xml `expo_runtime_version` = `1.0.0`,aapt2 證實)→ copy Z:
 
 ## 5. 驗證 OTA 真係 work
 
-- [x] 5.1 改用「publish 現有 code 做初始 baseline」取代改測試字串
-- [x] 5.2 `eas update --channel production --environment production`(android runtime `702eac7f…`,group `fd9c9c55…`)
-- [ ] 5.3 **【要你部機】** baseline APK 開 app → fetch + 彈「✨ 有新版本」→ 撳更新 reload(要再 push 第 2 個 update 先見到變化)
-- [x] 5.4 dashboard `production` channel/branch 已有 update group(publish 成功)
-- [ ] 5.5 **【要你部機】** 驗證後再 push 正常版(日常用 `eas update --channel production -m "…"`)
+- [x] 5.1 改 search placeholder 加 marker 做可見測試
+- [x] 5.2 `eas update --channel production --environment production`(runtime `1.0.0`,group `3fe83c96…`)
+- [x] 5.3 ✅ 部機開 app → 彈「✨ 有新版本」→ 撳更新 reload → 見到「(OTA ✓ v3)」= **全條 pipeline 通**
+- [x] 5.4 dashboard `production` branch 有 update group(runtime `1.0.0`)
+- [x] 5.5 撤 marker + push 乾淨版(group `aa42e84c…`);日常用 `eas update --channel production -m "…"`
 
 ## 6. 文檔 / memory
 

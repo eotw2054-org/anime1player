@@ -19,18 +19,17 @@ Because the APK is built locally (not via EAS Build), the app SHALL declare its 
 - **WHEN** the locally built APK requests updates
 - **THEN** it sends `expo-channel-name: production` and only receives updates published to that channel
 
-### Requirement: Runtime version uses fingerprint policy
-The app SHALL use `runtimeVersion.policy = "fingerprint"` so that any change affecting the native runtime automatically changes the runtime version, preventing JS-bundle/native mismatch.
+### Requirement: Runtime version uses a static string
+The app SHALL use a static `runtimeVersion` string (e.g. `"1.0.0"`) so the locally-built APK and `eas update` always agree on the runtime version. (The `fingerprint` policy was tried and rejected: a local `gradlew` build embeds a different fingerprint hash than the `eas update` CLI computes, so the server reports "no compatible update" and OTA is never delivered.)
 
-#### Scenario: Native change forces a new runtime version
+#### Scenario: Published update runtime matches the APK
+- **WHEN** an update is published with `runtimeVersion` `"1.0.0"` and the installed APK was built with `runtimeVersion` `"1.0.0"`
+- **THEN** the update is delivered to that APK over the air
+
+#### Scenario: Native change requires a manual bump + rebuild
 - **WHEN** a native dependency, plugin, permission, or the Expo/RN version changes
-- **THEN** the computed fingerprint changes
-- **AND** updates published before the new build are NOT delivered to the old APK
-
-#### Scenario: Pure-JS change keeps the same runtime version
-- **WHEN** only JS files or pure-JS dependencies change
-- **THEN** the fingerprint is unchanged
-- **AND** the update is delivered to the existing APK over the air
+- **THEN** the developer bumps `runtimeVersion` (e.g. `"1.0.1"`) and rebuilds + re-sideloads the APK
+- **AND** updates published under the new runtime version are NOT delivered to the old APK
 
 ### Requirement: In-app update prompt with immediate reload
 On launch in production builds, the app SHALL check for and download an available update, and SHALL prompt the user; on confirmation it SHALL reload into the new bundle immediately.

@@ -41,7 +41,7 @@
 
 1. **新 project,唔重用 `eotw`** — `eotw` 係測試 sandbox(已有 OTA proof + demo update 混雜),dashboard 嘅 update/usage 應該只屬 AnimePlayer。`eas init` 會起新 project 並填 `extra.eas.projectId`。
 
-2. **`runtimeVersion.policy = "fingerprint"`** — 因為用戶自己 sideload、容易漏咗「郁 native 要 bump runtime」。fingerprint 會自動 detect 任何影響 native runtime 嘅改動(加 module / 改 plugins / 升 expo)而 bump,最唔會 push 新 JS 落舊 APK 而 crash。代價:郁 native 後一定要重 build(本來都要)。
+2. **`runtimeVersion = "1.0.0"`(靜態字串)** — 原本揀 `policy: "fingerprint"`,但實測發現**對本機 gradlew build 唔可靠**:本機 build 燒入嘅 fingerprint(`47b0d15c…`)同 `eas update` CLI 計嘅(`702eac7f…`)**唔同**,server 當「呢個 runtime 冇 update」→ 永遠收唔到 OTA。靜態字串兩邊用同一個字面值,杜絕分歧。代價:郁 native(加 module / 升 expo)時要**手動 bump**(例如 `"1.0.1"`)先再出 APK —— 已喺 `AGENTS.md` 寫低。
 
 3. **Channel 寫死喺 `requestHeaders`** — v56 文檔明確:唔行 EAS Build 時 channel 唔會自動 inject,要喺 app config 手動設 `expo-channel-name` request header,再 `eas channel:create` 喺 server 建立。單一 `production` channel,夠用、最簡單。
 
