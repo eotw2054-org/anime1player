@@ -1409,6 +1409,32 @@ export default function App() {
     />
   );
 
+  // 我的最愛篩選掣（打直版同搜尋格並排）
+  const favFilterBtn = (
+    <Pressable
+      {...focusProps('fav-filter')}
+      style={[s.favFilter, tab === 'fav' && s.favFilterOn, focused('fav-filter')]}
+      onPress={() => setTab((t) => (t === 'fav' ? 'all' : 'fav'))}>
+      <Text style={[s.favFilterText, tab === 'fav' && s.favFilterTextOn]}>
+        ♥ {favorites.length || ''}
+      </Text>
+    </Pressable>
+  );
+
+  // 打直版：搜尋 + 收藏 同一行
+  const searchFavRow = (
+    <View style={s.searchFavRow}>
+      <TextInput
+        style={[s.search, s.searchFlex]}
+        placeholder="🔍  搜尋動畫…"
+        placeholderTextColor={C.muted}
+        value={query}
+        onChangeText={setQuery}
+      />
+      {favFilterBtn}
+    </View>
+  );
+
   const renderAnimeRow = (item: Anime) => {
     const k = favKey(item);
     const fav = favSet.has(k);
@@ -1537,72 +1563,103 @@ export default function App() {
     </View>
   );
 
-  // 設定（來源 一行）
+  // ===== 可組合嘅控制零件（打橫上下排，打直就兩兩並排）=====
+  const srcSelectorBtn = current && current.streams.length > 0 && (
+    <Pressable
+      {...focusProps('src-sel')}
+      style={[s.srcBar, focused('src-sel')]}
+      onPress={() => {
+        setSrcHiBoth(current.streamIndex);
+        setSrcOpen(true);
+      }}>
+      <Text style={s.srcBars}>▮▮▮</Text>
+      <Text style={s.srcName} numberOfLines={1}>
+        {current.streams[current.streamIndex]?.label ?? '—'}
+      </Text>
+      <Text style={s.srcMs}>
+        {(() => {
+          const ms = current.streams[current.streamIndex]?.ms;
+          return ms == null ? '' : ms === Infinity ? '✕' : ms + 'ms';
+        })()}
+      </Text>
+      <Text style={s.srcOk}>✓</Text>
+      <Text style={s.srcCaret}>▾</Text>
+    </Pressable>
+  );
+
+  const autoBestToggle = (
+    <Pressable
+      {...focusProps('auto-best')}
+      style={[s.toggleRow, focused('auto-best')]}
+      onPress={() => {
+        const v = !autoBest;
+        setAutoBest(v);
+        autoBestRef.current = v;
+        AsyncStorage.setItem('autoBest', v ? '1' : '0');
+        // 即開即生效：若有播緊嘅集，立即探測 + 切去最快來源
+        if (v) applyBestSource();
+      }}>
+      <Text style={s.toggleLabel}>自動最佳片源</Text>
+      <View style={[s.switch, autoBest && s.switchOn]}>
+        <View style={[s.knob, autoBest && s.knobOn]} />
+      </View>
+    </Pressable>
+  );
+
+  const fsOnPlayToggle = (
+    <Pressable
+      {...focusProps('fs-onplay')}
+      style={[s.toggleRow, focused('fs-onplay')]}
+      onPress={() => {
+        const v = !fsOnPlay;
+        setFsOnPlay(v);
+        AsyncStorage.setItem('fsOnPlay', v ? '1' : '0');
+      }}>
+      <Text style={s.toggleLabel}>播放即全螢幕</Text>
+      <View style={[s.switch, fsOnPlay && s.switchOn]}>
+        <View style={[s.knob, fsOnPlay && s.knobOn]} />
+      </View>
+    </Pressable>
+  );
+
+  const fsEnterBtn = (extra?: object) => (
+    <Pressable
+      {...focusProps('fs-enter')}
+      style={[s.btnFull, extra, focused('fs-enter')]}
+      onPress={() => setFullscreen(true)}>
+      <Text style={s.btnFullText}>⛶ 全螢幕播放</Text>
+    </Pressable>
+  );
+
+  // 打橫版：來源一行 + 動作上下排（右欄窄）
   const settingsRow = current && (
     <View style={s.settingsRow}>
-      {current.streams.length > 0 && (
-        <Pressable
-          {...focusProps('src-sel')}
-          style={[s.srcBar, focused('src-sel')]}
-          onPress={() => {
-            setSrcHiBoth(current.streamIndex);
-            setSrcOpen(true);
-          }}>
-          <Text style={s.srcBars}>▮▮▮</Text>
-          <Text style={s.srcName} numberOfLines={1}>
-            {current.streams[current.streamIndex]?.label ?? '—'}
-          </Text>
-          <Text style={s.srcMs}>
-            {(() => {
-              const ms = current.streams[current.streamIndex]?.ms;
-              return ms == null ? '' : ms === Infinity ? '✕' : ms + 'ms';
-            })()}
-          </Text>
-          <Text style={s.srcOk}>✓</Text>
-          <Text style={s.srcCaret}>▾</Text>
-        </Pressable>
-      )}
+      {srcSelectorBtn}
       {resolving && <ActivityIndicator color={C.cyan} style={{ marginLeft: 4 }} />}
     </View>
   );
 
   const railActions = current && (
     <View style={s.railActions}>
-      <Pressable
-        {...focusProps('fs-onplay')}
-        style={[s.toggleRow, focused('fs-onplay')]}
-        onPress={() => {
-          const v = !fsOnPlay;
-          setFsOnPlay(v);
-          AsyncStorage.setItem('fsOnPlay', v ? '1' : '0');
-        }}>
-        <Text style={s.toggleLabel}>播放即全螢幕</Text>
-        <View style={[s.switch, fsOnPlay && s.switchOn]}>
-          <View style={[s.knob, fsOnPlay && s.knobOn]} />
-        </View>
-      </Pressable>
-      <Pressable
-        {...focusProps('auto-best')}
-        style={[s.toggleRow, focused('auto-best')]}
-        onPress={() => {
-          const v = !autoBest;
-          setAutoBest(v);
-          autoBestRef.current = v;
-          AsyncStorage.setItem('autoBest', v ? '1' : '0');
-          // 即開即生效：若有播緊嘅集，立即探測 + 切去最快來源
-          if (v) applyBestSource();
-        }}>
-        <Text style={s.toggleLabel}>自動選擇最佳片源</Text>
-        <View style={[s.switch, autoBest && s.switchOn]}>
-          <View style={[s.knob, autoBest && s.knobOn]} />
-        </View>
-      </Pressable>
-      <Pressable
-        {...focusProps('fs-enter')}
-        style={[s.btnFull, focused('fs-enter')]}
-        onPress={() => setFullscreen(true)}>
-        <Text style={s.btnFullText}>⛶ 全螢幕播放</Text>
-      </Pressable>
+      {fsOnPlayToggle}
+      {autoBestToggle}
+      {fsEnterBtn()}
+    </View>
+  );
+
+  // 打直版：片源 + 自動最佳 一行；全螢幕掣 + 播放即全螢幕 一行
+  const srcAutoRow = current && (
+    <View style={s.pairRow}>
+      {srcSelectorBtn}
+      {resolving && <ActivityIndicator color={C.cyan} />}
+      {autoBestToggle}
+    </View>
+  );
+
+  const fsRow = current && (
+    <View style={s.pairRow}>
+      {fsEnterBtn({ flex: 1 })}
+      {fsOnPlayToggle}
     </View>
   );
 
@@ -1919,14 +1976,6 @@ export default function App() {
               {syncUser ? '☁ ' + syncUser : '☁'}
             </Text>
           </Pressable>
-          <Pressable
-            {...focusProps('fav-filter')}
-            style={[s.favFilter, tab === 'fav' && s.favFilterOn, focused('fav-filter')]}
-            onPress={() => setTab((t) => (t === 'fav' ? 'all' : 'fav'))}>
-            <Text style={[s.favFilterText, tab === 'fav' && s.favFilterTextOn]}>
-              ♥ {favorites.length || ''}
-            </Text>
-          </Pressable>
         </View>
       )}
 
@@ -1944,14 +1993,14 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View>
-            {searchBox}
+            {searchFavRow}
             {selected && (
               <>
-                {settingsRow}
+                {srcAutoRow}
                 {pickerHeader}
                 {rangeTabs}
                 {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridInner}
-                {railActions}
+                {fsRow}
                 <View style={s.divider} />
               </>
             )}
@@ -2122,6 +2171,9 @@ const s = StyleSheet.create({
 
   // settings row (來源)
   settingsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  searchFavRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  searchFlex: { flex: 1, marginBottom: 0 },
+  pairRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   srcBar: {
     flex: 1,
     flexDirection: 'row',
