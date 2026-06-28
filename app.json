@@ -30,7 +30,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 進度條可以正常拖放,唔會再跳返開頭\n• 加/刪最愛、設定開始-結束時間 會即時同步到雲端\n• 更新提示會顯示「更新內容」"
+      "releaseNotes": "• 修正『有新版本』提示有時唔彈\n• 撳左上角 [A1] 可睇版本 / OTA 資訊\n• 進度條拖放、最愛/開始結束即時同步(前版)"
     },
     "updates": {
       "url": "https://u.expo.dev/313eb4ec-182a-4cb3-82c2-97bf209ba6a6",
