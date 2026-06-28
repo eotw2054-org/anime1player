@@ -3,8 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2024-11-01"
 account_id = "1a8d6d8aeba5b94cc79303d59fd10328"
 
-# 自架 expo-updates manifest endpoint。bundle/assets 存喺 GitHub,呢個 var 係 raw base。
-# 發佈流程會 commit precomputed manifest 落 ota-dist branch:
-#   <GITHUB_RAW_BASE>/updates/<channel>/<platform>/<runtimeVersion>/manifest.json
-[vars]
-GITHUB_RAW_BASE = "https://raw.githubusercontent.com/eotw2054-org/anime1player/ota-dist"
+# 自架 expo-updates：bundle / assets / manifest 全部存喺 KV（免費、免卡、唔使寫 GitHub）。
+# 發佈流程用 wrangler 將 dist 上載落 KV：
+#   manifest:<channel>:<platform>:<runtimeVersion>  → manifest JSON
+#   asset:<key>                                      → binary（metadata.contentType）
+[[kv_namespaces]]
+binding = "OTA"
+id = "f5444f7783374419abf63bca3296b54b"

@@ -12,14 +12,14 @@ expo-updates (APK 內)
                  └─ https://<ota-worker>.workers.dev  (自架,新)
 ```
 
-- **發佈**(GitHub Action,push 或手動):`npx expo export -p android` → 計每個檔 sha256 → 砌好一份 ready-to-serve manifest JSON(含 GitHub raw URL)→ commit `dist/` + manifest 落 repo。
-- **派俾 app**(細 Cloudflare Worker `ota-worker`,stateless):收 app 請求(headers:`expo-platform` / `expo-runtime-version` / `expo-channel-name`)→ 由 GitHub raw 攞返 precomputed manifest → 包成 `multipart/mixed` → 回 expo-updates protocol。
+- **發佈**(GitHub Action,push 或手動):`npx expo export -p android` → 計每個檔 sha256 → 砌 manifest(URL 指 worker `/assets/<key>`)→ `wrangler` 將 bundle/assets/manifest 上載落 **KV**(用 `CLOUDFLARE_API_TOKEN`)。**唔寫 GitHub repo**。
+- **派俾 app**(Cloudflare Worker `anime1-ota`):收 app 請求(headers:`expo-platform` / `expo-runtime-version` / `expo-channel-name`)→ 由 **KV** 攞 manifest → 包 `multipart/mixed` 回;`/assets/<key>` 由 KV 派 bundle/asset。
 - **App**:`app.json` `updates.url` 改去 worker(可逆;舊 URL 註明 fallback);`runtimeVersion "1.0.0"` 照舊;**重 build + sideload 一次**(URL 燒喺 native)。
 - **保留 EAS**:`expo-updates`、`projectId`、舊 `u.expo.dev` URL、`eas update` 流程全部留低,`AGENTS.md` 註明點切返。
 
 ## Design Decisions
 
-1. **GitHub 存 bundle/assets,Cloudflare 只用一個 Worker** — R2 要 subscribe + 卡 on file,KV 有 size 限制;用戶要「最低限度 Cloudflare」。storage 放 GitHub(raw / Pages),Worker 縮到「淨係出 manifest」。
+1. **Cloudflare KV 存 bundle/assets/manifest(由 GitHub 改成 KV)** — 原本想 GitHub raw 存,但 org 政策鎖死咗 CI 寫入 GitHub(read-write token 同 deploy key 都封),要郁 org-wide 設定。改用 **KV**:免費、免卡(R2 先要卡)、每 value 25MB(bundle ~2MB 綽綽有餘),publish 用已有嘅 `CLOUDFLARE_API_TOKEN` 上載,**完全唔使掂 GitHub 政策**。Worker 由 KV 派 manifest + `/assets/<key>` 派 bundle/asset。
 
 2. **Hash 喺發佈時(GitHub Action / Node)計,唔喺 Worker 計** — expo-updates 要每個 asset 嘅 `base64url(sha256)`,而 `expo export` 嘅 metadata.json 唔含 hash。Action 用 Node 計好、寫入 precomputed manifest;Worker 只讀 + 包 multipart,保持 stateless + 快。
 
