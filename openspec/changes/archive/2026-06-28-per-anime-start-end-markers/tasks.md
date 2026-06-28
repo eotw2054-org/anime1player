@@ -38,6 +38,6 @@
 ## 6. Verify & ship
 
 - [x] 6.1 `npx tsc --noEmit` passes
-- [ ] 6.2 Manual: set Start → next episode auto-skips intro; set End → auto-advances once; End≤Start does NOT skip-storm; clear reverts; values persist after restart; remote can set in fullscreen
-- [ ] 6.3 Manual: after auto-advance, "繼續觀看" resumes the NEW episode (not the skipped one at its end)
+- [x] 6.2 Manual: set Start → next episode auto-skips intro; set End → auto-advances once; End≤Start does NOT skip-storm; clear reverts; values persist after restart; remote can set in fullscreen ✅(真機驗過)
+- [x] 6.3 Manual: after auto-advance, "繼續觀看" resumes the NEW episode (not the skipped one at its end) ✅(真機驗過)
 - [x] 6.4 Deploy APK (build release + copy to `Z:\Project\AnimePlayer`)

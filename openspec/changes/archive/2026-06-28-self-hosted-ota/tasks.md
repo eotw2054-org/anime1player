@@ -27,8 +27,8 @@
 ## 5. 驗證
 
 - [x] 5.1 worker 端到端:manifest 200 multipart + bundle 200(application/javascript, 2.1MB)由 KV 派 ✅
-- [ ] 5.2 **【要你部機】** 裝新 APK → 開 app 彈「✨ 有新版本」+「更新內容」→ reload 生效
-- [ ] 5.3 (可選)驗 fallback:改返 `u.expo.dev` 重 build 仍 work(步驟已寫 AGENTS.md)
+- [x] 5.2 **【要你部機】** 裝新 APK → 開 app 彈「✨ 有新版本」+「更新內容」→ reload 生效 ✅(真機驗過)
+- [x] 5.3 ~~(可選)驗 fallback:改返 `u.expo.dev` 重 build 仍 work~~ — **SKIPPED**(可選;步驟已寫 AGENTS.md)
 
 ## 6. 文檔
 
