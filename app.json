@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 遙控器加咗🔒鎖定掣(喺設開始/設結束中間):撳一下就暫時唔會控制播放器,防止誤觸。每次開 app 預設冇鎖"
+      "releaseNotes": "• 打直版控制區重新排版:播放器/遙控器 toggle 搬上頂 bar(配 Anime1Player logo)、分流條收窄同「收起」同一行、片名同「共 N 集」合併喺集格上面;自動最佳片源/播放即全螢幕 收入頂 bar 嘅 ⚙ 設定;移除大粒全螢幕播放掣"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
