@@ -30,7 +30,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 打直版:標題列加「收起/控制」掣,可手動收埋成個控制區\n• 移除「繼續觀看 xx:xx」顯示(續看功能照舊)"
+      "releaseNotes": "• 打直版:「我的最愛」移去搜尋行,喺收藏掣右邊\n• 標題列加「收起/控制」掣收埋控制區;移除「繼續觀看 xx:xx」"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

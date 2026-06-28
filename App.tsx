@@ -1467,7 +1467,19 @@ export default function App() {
     </View>
   );
 
-  // 標題列（名 + 集 + 繼續看 + 我的最愛 + 已收藏）
+  // 我的最愛篩選掣（打橫放標題列，打直放搜尋行）
+  const favFilterBtn = (
+    <Pressable
+      {...focusProps('fav-filter')}
+      style={[s.favFilter, tab === 'fav' && s.favFilterOn, focused('fav-filter')]}
+      onPress={() => setTab((t) => (t === 'fav' ? 'all' : 'fav'))}>
+      <Text style={[s.favFilterText, tab === 'fav' && s.favFilterTextOn]}>
+        ♥ 我的最愛 {favorites.length || ''}
+      </Text>
+    </Pressable>
+  );
+
+  // 標題列（名 + 集 + 收起控制 + 我的最愛(打橫)）
   // 標題跟「正喺睇緊／揀緊」嗰套（selected 優先），切動畫即刻更新
   const titleAnime = selected ?? current?.anime ?? null;
   // 顯示緊嗰套 = 正播緊嗰套 先顯示集數／繼續觀看（免得新名配舊集數）
@@ -1496,14 +1508,7 @@ export default function App() {
           <Text style={s.panelToggleText}>{panelOpen ? '▴ 收起' : '▾ 控制'}</Text>
         </Pressable>
       )}
-      <Pressable
-        {...focusProps('fav-filter')}
-        style={[s.favFilter, tab === 'fav' && s.favFilterOn, focused('fav-filter')]}
-        onPress={() => setTab((t) => (t === 'fav' ? 'all' : 'fav'))}>
-        <Text style={[s.favFilterText, tab === 'fav' && s.favFilterTextOn]}>
-          ♥ 我的最愛 {favorites.length || ''}
-        </Text>
-      </Pressable>
+      {isLandscape && favFilterBtn}
     </View>
   );
 
@@ -1529,6 +1534,7 @@ export default function App() {
         onChangeText={setQuery}
       />
       {collectBtn}
+      {favFilterBtn}
     </View>
   );
 
