@@ -33,7 +33,7 @@
       "releaseNotes": "• 修正『有新版本』提示有時唔彈\n• 撳左上角 [A1] 可睇版本 / OTA 資訊\n• 進度條拖放、最愛/開始結束即時同步(前版)"
     },
     "updates": {
-      "url": "https://u.expo.dev/313eb4ec-182a-4cb3-82c2-97bf209ba6a6",
+      "url": "https://anime1-ota.eotw2054.workers.dev",
       "requestHeaders": {
         "expo-channel-name": "production"
       }
