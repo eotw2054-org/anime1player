@@ -452,6 +452,7 @@ export default function App() {
   const [targetId, setTargetId] = useState<string | null>(null);
   const [remoteState, setRemoteState] = useState<any>(null); // 收到嘅 now-playing（+_recvAt）
   const lastStateSentRef = useRef(0);
+  const nameInputRef = useRef<any>(null); // 自定義名稱輸入框（撳 OK 先 focus 開鍵盤）
   const [syncOpen, setSyncOpen] = useState(false);
   const [syncName, setSyncName] = useState('');
   const [syncPass, setSyncPass] = useState('');
@@ -2125,18 +2126,26 @@ export default function App() {
           <Text style={[s.spOptText, allowRemote && s.spOptTextOn]}>允許遠端遙控（被其他裝置控制）</Text>
           <Text style={s.spOptCk}>{allowRemote ? '✓' : ''}</Text>
         </Pressable>
-        <TextInput
-          style={s.spNameInput}
-          value={deviceName}
-          onChangeText={(t) => {
-            const v = t.slice(0, 64);
-            setDeviceName(v);
-            AsyncStorage.setItem('deviceName', v);
-          }}
-          placeholder="自定義名稱（例如 Projector）"
-          placeholderTextColor={C.muted}
-          maxLength={64}
-        />
+        {/* D-pad 目標:撳 OK → focus 輸入框,彈系統鍵盤;TextInput 本身 focusable=false 免重複搶焦 */}
+        <Pressable
+          {...focusProps('rc-name')}
+          style={[s.spNameField, focused('rc-name')]}
+          onPress={() => nameInputRef.current?.focus()}>
+          <TextInput
+            ref={nameInputRef}
+            focusable={false}
+            style={s.spNameInput}
+            value={deviceName}
+            onChangeText={(t) => {
+              const v = t.slice(0, 64);
+              setDeviceName(v);
+              AsyncStorage.setItem('deviceName', v);
+            }}
+            placeholder="自定義名稱（撳 OK 打字）"
+            placeholderTextColor={C.muted}
+            maxLength={64}
+          />
+        </Pressable>
         <Text style={s.spSection}>關於</Text>
         <Text style={s.spVer} selectable>{otaInfo}</Text>
         </ScrollView>
@@ -2637,7 +2646,8 @@ const s = StyleSheet.create({
   srcMenuTitle: { color: C.muted, fontSize: 11, fontWeight: '800', marginBottom: 6, paddingHorizontal: 4 },
   spSection: { color: C.cyan, fontSize: 10, fontWeight: '800', marginTop: 8, marginBottom: 4, paddingHorizontal: 4, letterSpacing: 0.5 },
   spVer: { color: C.mutedDim, fontSize: 10, marginTop: 4, paddingHorizontal: 4, lineHeight: 14 },
-  spNameInput: { marginTop: 6, backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, color: C.text, fontSize: 13 },
+  spNameField: { marginTop: 6, backgroundColor: C.raised, borderRadius: 8 },
+  spNameInput: { paddingHorizontal: 12, paddingVertical: 8, color: C.text, fontSize: 13 },
   srcItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 8, marginBottom: 4, borderWidth: 2, borderColor: 'transparent' },
   srcItemOn: { backgroundColor: 'rgba(52,225,232,0.10)' },
   srcItemHi: { borderColor: C.cyan },
