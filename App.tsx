@@ -445,6 +445,8 @@ export default function App() {
   const [deviceName, setDeviceName] = useState('');
   const [role, setRole] = useState<'player' | 'remote'>('player');
   const roleRef = useRef<'player' | 'remote'>('player');
+  const [allowRemote, setAllowRemote] = useState(false); // 預設關：開咗先可以被遙控
+  const allowRemoteRef = useRef(false);
   const wsRef = useRef<WebSocket | null>(null);
   const [remotePlayers, setRemotePlayers] = useState<any[]>([]); // roster 入面 role=player
   const [targetId, setTargetId] = useState<string | null>(null);
@@ -575,7 +577,7 @@ export default function App() {
   // 載入設定 + 我的最愛
   useEffect(() => {
     (async () => {
-      const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken, ab, po, dId, dName, dRole] =
+      const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken, ab, po, dId, dName, dRole, dAllow] =
         await Promise.all([
           AsyncStorage.getItem('site'),
           AsyncStorage.getItem('marks'),
@@ -592,6 +594,7 @@ export default function App() {
           AsyncStorage.getItem('deviceId'),
           AsyncStorage.getItem('deviceName'),
           AsyncStorage.getItem('role'),
+          AsyncStorage.getItem('allowRemote'),
         ]);
       // 裝置身份 + 角色
       let did = dId;
@@ -605,6 +608,10 @@ export default function App() {
       if (dRole === 'remote' || dRole === 'player') {
         setRole(dRole);
         roleRef.current = dRole;
+      }
+      if (dAllow === '1') {
+        setAllowRemote(true);
+        allowRemoteRef.current = true;
       }
       if (sUser && sToken) {
         setSyncUser(sUser);
@@ -1175,14 +1182,17 @@ export default function App() {
   const sendHello = () => {
     const ws = wsRef.current;
     if (ws && ws.readyState === 1) {
+      // 播放器但未開「允許遠端遙控」→ 報 player_locked,唔會出現喺遙控器嘅播放器清單
+      const annRole =
+        roleRef.current === 'player' && !allowRemoteRef.current ? 'player_locked' : roleRef.current;
       try {
-        ws.send(JSON.stringify({ type: 'hello', deviceId: deviceIdRef.current, name: deviceName, role: roleRef.current }));
+        ws.send(JSON.stringify({ type: 'hello', deviceId: deviceIdRef.current, name: deviceName, role: annRole }));
       } catch {}
     }
   };
   // 播放器：broadcast now-playing 俾遙控器
   const broadcastState = () => {
-    if (roleRef.current !== 'player') return;
+    if (roleRef.current !== 'player' || !allowRemoteRef.current) return;
     const c = currentRef.current;
     if (!c) return;
     let position = 0,
@@ -1208,7 +1218,7 @@ export default function App() {
   };
   // 播放器：執行遙控器嘅 cmd（只 player 角色、targetId 啱、唔係自己發）
   const execCmd = (m: any) => {
-    if (roleRef.current !== 'player') return;
+    if (roleRef.current !== 'player' || !allowRemoteRef.current) return; // 未開允許遙控 → 唔執行
     if (m.targetId && m.targetId !== deviceIdRef.current) return;
     const c = currentRef.current;
     try {
@@ -1252,11 +1262,12 @@ export default function App() {
     wsSend({ type: 'cmd', targetId, action: 'playEpisode', value: { url, anime } });
   };
 
-  // roleRef 同步 + 角色變即時 re-send hello（唔 reconnect）
+  // roleRef / allowRemoteRef 同步 + 變更即時 re-send hello（唔 reconnect）
   useEffect(() => {
     roleRef.current = role;
+    allowRemoteRef.current = allowRemote;
     sendHello();
-  }, [role, deviceName]);
+  }, [role, deviceName, allowRemote]);
 
   // 遙控器：每 0.5s tick 推算進度條
   const [remoteTick, setRemoteTick] = useState(0);
@@ -2100,6 +2111,32 @@ export default function App() {
             </Pressable>
           );
         })}
+        <Text style={s.spSection}>遙控</Text>
+        <Pressable
+          {...focusProps('allow-remote')}
+          style={[s.spOpt, allowRemote && s.spOptOn, focused('allow-remote')]}
+          onPress={() => {
+            const v = !allowRemote;
+            setAllowRemote(v);
+            allowRemoteRef.current = v;
+            AsyncStorage.setItem('allowRemote', v ? '1' : '0');
+          }}>
+          <View style={[s.spDot, !allowRemote && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
+          <Text style={[s.spOptText, allowRemote && s.spOptTextOn]}>允許遠端遙控（被其他裝置控制）</Text>
+          <Text style={s.spOptCk}>{allowRemote ? '✓' : ''}</Text>
+        </Pressable>
+        <TextInput
+          style={s.spNameInput}
+          value={deviceName}
+          onChangeText={(t) => {
+            const v = t.slice(0, 64);
+            setDeviceName(v);
+            AsyncStorage.setItem('deviceName', v);
+          }}
+          placeholder="自定義名稱（例如 Projector）"
+          placeholderTextColor={C.muted}
+          maxLength={64}
+        />
         <Text style={s.spSection}>關於</Text>
         <Text style={s.spVer} selectable>{otaInfo}</Text>
       </Pressable>
@@ -2599,6 +2636,7 @@ const s = StyleSheet.create({
   srcMenuTitle: { color: C.muted, fontSize: 11, fontWeight: '800', marginBottom: 6, paddingHorizontal: 4 },
   spSection: { color: C.cyan, fontSize: 10, fontWeight: '800', marginTop: 8, marginBottom: 4, paddingHorizontal: 4, letterSpacing: 0.5 },
   spVer: { color: C.mutedDim, fontSize: 10, marginTop: 4, paddingHorizontal: 4, lineHeight: 14 },
+  spNameInput: { marginTop: 6, backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, color: C.text, fontSize: 13 },
   srcItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 8, marginBottom: 4, borderWidth: 2, borderColor: 'transparent' },
   srcItemOn: { backgroundColor: 'rgba(52,225,232,0.10)' },
   srcItemHi: { borderColor: C.cyan },

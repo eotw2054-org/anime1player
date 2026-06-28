@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 遙控器面板重新排版:裝置名 + 片名併一行、全屏幕移右上角、加「設開始/設結束」、transport(⏮ ⟲10 ⏯ ⟳10 ⏭)五個一行,慳位又齊全\n• 標題列「播放器/遙控器」切換控制另一部播放"
+      "releaseNotes": "• A1 設定加「允許遠端遙控」(預設關;開咗先可以被其他裝置遙控)\n• A1 設定可改「自定義名稱」(例如 Projector),會顯示喺遙控器嘅播放器清單"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
