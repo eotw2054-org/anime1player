@@ -1658,6 +1658,12 @@ export default function App() {
     setRole(r);
     roleRef.current = r;
     AsyncStorage.setItem('role', r);
+    if (r === 'remote') {
+      setFullscreen(false);
+      try {
+        player.pause(); // 遙控器唔本機播,收聲
+      } catch {}
+    }
   };
   const roleToggle = (
     <View style={s.roleSeg}>
@@ -2055,7 +2061,8 @@ export default function App() {
         overflow: 'hidden' as const,
         backgroundColor: '#05070f',
       };
-  const playerHost = isPlaying ? <View style={hostStyle}>{playerNode}</View> : null;
+  // 遙控器模式：唔 render 本機 video（佢只係遙控,唔播片）
+  const playerHost = role === 'remote' ? null : isPlaying ? <View style={hostStyle}>{playerNode}</View> : null;
 
   // ========= 來源 / 站台 選單覆蓋 =========
   // 版本 / OTA 資訊（撳 [A1] 開來源選單時喺底部顯示）
