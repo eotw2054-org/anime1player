@@ -439,6 +439,17 @@ export default function App() {
   // 雲端同步（登入後 favorites/progress/marks 跨裝置）
   const [syncUser, setSyncUser] = useState<string | null>(null);
   const syncTokenRef = useRef<string | null>(null);
+
+  // 遙控（手機 ↔ 投影機，經 SyncHub WebSocket）
+  const deviceIdRef = useRef<string>('');
+  const [deviceName, setDeviceName] = useState('');
+  const [role, setRole] = useState<'player' | 'remote'>('player');
+  const roleRef = useRef<'player' | 'remote'>('player');
+  const wsRef = useRef<WebSocket | null>(null);
+  const [remotePlayers, setRemotePlayers] = useState<any[]>([]); // roster 入面 role=player
+  const [targetId, setTargetId] = useState<string | null>(null);
+  const [remoteState, setRemoteState] = useState<any>(null); // 收到嘅 now-playing（+_recvAt）
+  const lastStateSentRef = useRef(0);
   const [syncOpen, setSyncOpen] = useState(false);
   const [syncName, setSyncName] = useState('');
   const [syncPass, setSyncPass] = useState('');
@@ -551,6 +562,8 @@ export default function App() {
       AsyncStorage.setItem('progress', JSON.stringify(progressRef.current));
       scheduleSyncPush();
     }
+    // 播放器：~3s 心跳廣播 now-playing 俾遙控器
+    if (roleRef.current === 'player' && now - lastStateSentRef.current > 3000) broadcastState();
   });
 
   // 播完自動跳下一集
@@ -562,20 +575,37 @@ export default function App() {
   // 載入設定 + 我的最愛
   useEffect(() => {
     (async () => {
-      const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken, ab, po] = await Promise.all([
-        AsyncStorage.getItem('site'),
-        AsyncStorage.getItem('marks'),
-        AsyncStorage.getItem('favorites'),
-        AsyncStorage.getItem('favAll'),
-        AsyncStorage.getItem('fsOnPlay'),
-        AsyncStorage.getItem('srcLabel'),
-        AsyncStorage.getItem('progress'),
-        AsyncStorage.getItem('enabledSites'),
-        AsyncStorage.getItem('syncUser'),
-        AsyncStorage.getItem('syncToken'),
-        AsyncStorage.getItem('autoBest'),
-        AsyncStorage.getItem('panelOpen'),
-      ]);
+      const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken, ab, po, dId, dName, dRole] =
+        await Promise.all([
+          AsyncStorage.getItem('site'),
+          AsyncStorage.getItem('marks'),
+          AsyncStorage.getItem('favorites'),
+          AsyncStorage.getItem('favAll'),
+          AsyncStorage.getItem('fsOnPlay'),
+          AsyncStorage.getItem('srcLabel'),
+          AsyncStorage.getItem('progress'),
+          AsyncStorage.getItem('enabledSites'),
+          AsyncStorage.getItem('syncUser'),
+          AsyncStorage.getItem('syncToken'),
+          AsyncStorage.getItem('autoBest'),
+          AsyncStorage.getItem('panelOpen'),
+          AsyncStorage.getItem('deviceId'),
+          AsyncStorage.getItem('deviceName'),
+          AsyncStorage.getItem('role'),
+        ]);
+      // 裝置身份 + 角色
+      let did = dId;
+      if (!did) {
+        did = 'D' + Math.random().toString(36).slice(2, 8).toUpperCase();
+        AsyncStorage.setItem('deviceId', did);
+      }
+      deviceIdRef.current = did;
+      const dn = dName || 'Android-' + did.slice(1, 5);
+      setDeviceName(dn.slice(0, 64));
+      if (dRole === 'remote' || dRole === 'player') {
+        setRole(dRole);
+        roleRef.current = dRole;
+      }
       if (sUser && sToken) {
         setSyncUser(sUser);
         syncTokenRef.current = sToken;
@@ -708,9 +738,9 @@ export default function App() {
 
   async function openAnime(a: Anime) {
     setSelected(a);
-    // 續看：若有記錄，自動載入上次嗰集並 seek 返
+    // 續看：若有記錄，自動載入上次嗰集並 seek 返（遙控器模式唔本機播）
     const prog = progressRef.current[favKey(a)];
-    if (prog?.url) {
+    if (prog?.url && roleRef.current !== 'remote') {
       resumeAtRef.current = prog.time || 0;
       playEpisode(prog.url, a);
     }
@@ -1133,6 +1163,107 @@ export default function App() {
     };
   }, [syncUser]);
 
+  // ===== 遙控 helpers =====
+  const wsSend = (obj: any) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === 1) {
+      try {
+        ws.send(JSON.stringify({ ...obj, from: deviceIdRef.current }));
+      } catch {}
+    }
+  };
+  const sendHello = () => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === 1) {
+      try {
+        ws.send(JSON.stringify({ type: 'hello', deviceId: deviceIdRef.current, name: deviceName, role: roleRef.current }));
+      } catch {}
+    }
+  };
+  // 播放器：broadcast now-playing 俾遙控器
+  const broadcastState = () => {
+    if (roleRef.current !== 'player') return;
+    const c = currentRef.current;
+    if (!c) return;
+    let position = 0,
+      duration = 0,
+      playing = false;
+    try {
+      position = player.currentTime || 0;
+      duration = player.duration || 0;
+      playing = player.playing;
+    } catch {}
+    lastStateSentRef.current = Date.now();
+    wsSend({
+      type: 'state',
+      title: c.anime?.name,
+      ep: c.episodeNo,
+      position,
+      duration,
+      playing,
+      hasPrev: !!c.prevUrl,
+      hasNext: !!c.nextUrl,
+      at: Date.now(),
+    });
+  };
+  // 播放器：執行遙控器嘅 cmd（只 player 角色、targetId 啱、唔係自己發）
+  const execCmd = (m: any) => {
+    if (roleRef.current !== 'player') return;
+    if (m.targetId && m.targetId !== deviceIdRef.current) return;
+    const c = currentRef.current;
+    try {
+      switch (m.action) {
+        case 'toggle':
+          player.playing ? player.pause() : player.play();
+          break;
+        case 'next':
+          if (c?.nextUrl) playEpisode(c.nextUrl, c.anime);
+          break;
+        case 'prev':
+          if (c?.prevUrl) playEpisode(c.prevUrl, c.anime);
+          break;
+        case 'seek':
+          player.currentTime = Math.max(0, (player.currentTime || 0) + (m.value || 0));
+          break;
+        case 'seekTo':
+          player.currentTime = (m.value || 0) * (player.duration || 0);
+          break;
+        case 'fs':
+          setFullscreen(m.value !== false);
+          break;
+        case 'playEpisode':
+          if (m.value?.url) {
+            playEpisode(m.value.url, m.value.anime);
+            setFullscreen(true);
+          }
+          break;
+      }
+    } catch {}
+    setTimeout(broadcastState, 300); // 執行後即刻回報新狀態
+  };
+  // 遙控器：揀片 → 叫投影機播（唔喺手機播）
+  const remotePlay = (url: string, anime: Anime) => {
+    wsSend({ type: 'cmd', targetId, action: 'playEpisode', value: { url, anime } });
+  };
+
+  // roleRef 同步 + 角色變即時 re-send hello（唔 reconnect）
+  useEffect(() => {
+    roleRef.current = role;
+    sendHello();
+  }, [role, deviceName]);
+
+  // 遙控器：每 0.5s tick 推算進度條
+  const [remoteTick, setRemoteTick] = useState(0);
+  const targetIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    targetIdRef.current = targetId;
+  }, [targetId]);
+  useEffect(() => {
+    if (role !== 'remote') return;
+    const id = setInterval(() => setRemoteTick((t) => t + 1), 500);
+    return () => clearInterval(id);
+  }, [role]);
+
   // 即時同步：登入期間開一條 WebSocket 去 sync hub（DO）。
   // 對方裝置改動 → server broadcast「changed」→ 即刻 pullMerge（sub-second）。60s poll 做 fallback。
   useEffect(() => {
@@ -1149,10 +1280,38 @@ export default function App() {
         scheduleRetry();
         return;
       }
+      wsRef.current = ws;
+      ws.onopen = () => sendHello();
       ws.onmessage = (e: any) => {
+        let m: any;
         try {
-          if (JSON.parse(e.data)?.type === 'changed') pullMerge();
-        } catch {}
+          m = JSON.parse(e.data);
+        } catch {
+          return;
+        }
+        if (!m || typeof m !== 'object') return;
+        if (m.from && m.from === deviceIdRef.current) return; // 忽略自己（保險）
+        switch (m.type) {
+          case 'changed':
+            pullMerge();
+            break;
+          case 'roster': {
+            const players = (m.devices || []).filter((d: any) => d.role === 'player');
+            setRemotePlayers(players);
+            setTargetId((cur) => {
+              if (players.length === 0) return null;
+              if (cur && players.some((p: any) => p.deviceId === cur)) return cur;
+              return players.length === 1 ? players[0].deviceId : cur;
+            });
+            break;
+          }
+          case 'state':
+            setRemoteState({ ...m, _recvAt: Date.now() });
+            break;
+          case 'cmd':
+            execCmd(m);
+            break;
+        }
       };
       ws.onclose = scheduleRetry;
       ws.onerror = () => {
@@ -1186,6 +1345,7 @@ export default function App() {
       try {
         ws?.close();
       } catch {}
+      wsRef.current = null;
     };
   }, [syncUser]);
 
@@ -1487,6 +1647,29 @@ export default function App() {
   // 標題跟「正喺睇緊／揀緊」嗰套（selected 優先），切動畫即刻更新
   const titleAnime = selected ?? current?.anime ?? null;
   // 顯示緊嗰套 = 正播緊嗰套 先顯示集數／繼續觀看（免得新名配舊集數）
+  // 角色 toggle（播放器/遙控器）
+  const setRoleP = (r: 'player' | 'remote') => {
+    setRole(r);
+    roleRef.current = r;
+    AsyncStorage.setItem('role', r);
+  };
+  const roleToggle = (
+    <View style={s.roleSeg}>
+      <Pressable
+        {...focusProps('role-player')}
+        style={[s.roleSegBtn, role === 'player' && s.roleSegOn, focused('role-player')]}
+        onPress={() => setRoleP('player')}>
+        <Text style={[s.roleSegText, role === 'player' && s.roleSegTextOn]}>播放器</Text>
+      </Pressable>
+      <Pressable
+        {...focusProps('role-remote')}
+        style={[s.roleSegBtn, role === 'remote' && s.roleSegOn, focused('role-remote')]}
+        onPress={() => setRoleP('remote')}>
+        <Text style={[s.roleSegText, role === 'remote' && s.roleSegTextOn]}>遙控器</Text>
+      </Pressable>
+    </View>
+  );
+
   const playingThis = !!(current && titleAnime && favKey(current.anime) === favKey(titleAnime));
   const resumeAt = playingThis ? progressRef.current[favKey(titleAnime!)]?.time ?? 0 : 0;
   const titleBar = titleAnime && (
@@ -1500,6 +1683,7 @@ export default function App() {
         </View>
       )}
       <View style={{ flex: 1 }} />
+      {role === 'player' && roleToggle}
       {!isLandscape && selected && (
         <Pressable
           {...focusProps('panel-toggle')}
@@ -1578,7 +1762,7 @@ export default function App() {
             key={item.url}
             {...focusProps('ep-' + item.url)}
             style={[s.ep, { width: epItemW || undefined }, on && s.epOn, focused('ep-' + item.url)]}
-            onPress={() => playEpisode(item.url)}>
+            onPress={() => (role === 'remote' && selected ? remotePlay(item.url, selected) : playEpisode(item.url))}>
             <Text style={[s.epText, on && s.epTextOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
               {item.ep}
             </Text>
@@ -1716,6 +1900,132 @@ export default function App() {
       )}
     </View>
   );
+
+  // 遙控器進度條（拖放 → seekTo）
+  const rsBarWRef = useRef(0);
+  const rsBarXRef = useRef(0);
+  const [rsDrag, setRsDrag] = useState<number | null>(null);
+  const rsDragRef = useRef<number | null>(null);
+  const rsPan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => {
+        const w = rsBarWRef.current;
+        rsBarXRef.current = e.nativeEvent.pageX - e.nativeEvent.locationX;
+        const x = Math.min(w, Math.max(0, e.nativeEvent.locationX));
+        rsDragRef.current = x;
+        setRsDrag(x);
+      },
+      onPanResponderMove: (e, gs) => {
+        const w = rsBarWRef.current;
+        const x = Math.min(w, Math.max(0, gs.moveX - rsBarXRef.current));
+        rsDragRef.current = x;
+        setRsDrag(x);
+      },
+      onPanResponderRelease: () => {
+        const w = rsBarWRef.current;
+        const x = rsDragRef.current ?? 0;
+        const ratio = w > 0 ? Math.min(1, Math.max(0, x / w)) : 0;
+        wsSend({ type: 'cmd', targetId: targetIdRef.current, action: 'seekTo', value: ratio });
+        rsDragRef.current = null;
+        setRsDrag(null);
+      },
+    })
+  ).current;
+
+  const remotePanel = (() => {
+    void remoteTick; // 每 0.5s 重算進度
+    const rcmd = (action: string, value?: any) =>
+      wsSend({ type: 'cmd', targetId: targetIdRef.current, action, value });
+    const st = remoteState;
+    const stale = st && Date.now() - st._recvAt > 6000;
+    const dur = st?.duration || 0;
+    const live = st && !stale ? (st.playing ? st.position + (Date.now() - st._recvAt) / 1000 : st.position) : 0;
+    const pos = rsDrag != null && rsBarWRef.current > 0 ? (rsDrag / rsBarWRef.current) * dur : live;
+    const pct = dur > 0 ? Math.min(1, Math.max(0, pos / dur)) : 0;
+    const target = remotePlayers.find((p) => p.deviceId === targetId);
+    const fmt = (s: number) => {
+      s = Math.max(0, Math.floor(s));
+      const m = Math.floor(s / 60);
+      return `${m}:${String(s % 60).padStart(2, '0')}`;
+    };
+    return (
+      <View style={[s.playerArea, !isLandscape && s.playerAreaPortrait, s.remotePanel]}>
+        <View style={s.remoteHead}>
+          <Text style={s.remoteTag}>🎮 遙控器</Text>
+          {roleToggle}
+        </View>
+        {!syncUser ? (
+          <View style={s.remoteCenter}>
+            <Text style={s.remoteHint}>請先登入雲端同步（撳右上角 ☁）</Text>
+          </View>
+        ) : remotePlayers.length === 0 ? (
+          <View style={s.remoteCenter}>
+            <Text style={s.remoteHint}>未連接到播放器</Text>
+            <Text style={s.remoteSub}>喺另一部裝置開 App、設為「播放器」、登入同一帳戶</Text>
+            <Pressable {...focusProps('rc-rescan')} style={[s.syncBtn, focused('rc-rescan')]} onPress={sendHello}>
+              <Text style={s.syncBtnText}>🔄 重新搜尋</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            {remotePlayers.length > 1 ? (
+              <Pressable
+                {...focusProps('rc-target')}
+                style={[s.rcTarget, focused('rc-target')]}
+                onPress={() => {
+                  const i = remotePlayers.findIndex((p) => p.deviceId === targetId);
+                  setTargetId(remotePlayers[(i + 1) % remotePlayers.length].deviceId);
+                }}>
+                <Text style={s.rcTargetText}>🖥 {target?.name ?? '揀播放器'} ▾</Text>
+              </Pressable>
+            ) : (
+              <Text style={s.rcTargetStatic}>🖥 {target?.name ?? remotePlayers[0]?.name}</Text>
+            )}
+            <Text style={s.rcNow} numberOfLines={1}>
+              {stale ? '連線中斷…' : st ? `${st.title ?? ''}${st.ep ? ' · 第 ' + st.ep + ' 集' : ''}` : '（未播放）'}
+            </Text>
+            <View style={s.rcSeekRow} {...rsPan.panHandlers}>
+              <View
+                style={s.rcSeekWrap}
+                onLayout={(e) => {
+                  rsBarWRef.current = e.nativeEvent.layout.width;
+                }}>
+                <View style={s.seekTrack} pointerEvents="none" />
+                <View style={[s.seekFill, { width: `${pct * 100}%` }]} pointerEvents="none" />
+              </View>
+            </View>
+            <Text style={s.rcTime}>
+              {fmt(pos)} / {fmt(dur)}
+            </Text>
+            <View style={s.rcRow}>
+              <Pressable {...focusProps('rc-prev')} disabled={!st?.hasPrev} style={[s.ctrBtn, focused('rc-prev')]} onPress={() => rcmd('prev')}>
+                <Text style={[s.rcBtnIcon, !st?.hasPrev && s.rcBtnOff]}>⏮</Text>
+              </Pressable>
+              <Pressable {...focusProps('rc-play')} hasTVPreferredFocus style={[s.ctrBtn, s.rcPlay, focused('rc-play')]} onPress={() => rcmd('toggle')}>
+                <Text style={s.rcBtnIcon}>{st?.playing ? '⏸' : '▶'}</Text>
+              </Pressable>
+              <Pressable {...focusProps('rc-next')} disabled={!st?.hasNext} style={[s.ctrBtn, focused('rc-next')]} onPress={() => rcmd('next')}>
+                <Text style={[s.rcBtnIcon, !st?.hasNext && s.rcBtnOff]}>⏭</Text>
+              </Pressable>
+            </View>
+            <View style={s.rcRow}>
+              <Pressable {...focusProps('rc-b10')} style={[s.ctrBtn, focused('rc-b10')]} onPress={() => rcmd('seek', -10)}>
+                <Text style={s.rcBtnSm}>⟲ 10</Text>
+              </Pressable>
+              <Pressable {...focusProps('rc-f10')} style={[s.ctrBtn, focused('rc-f10')]} onPress={() => rcmd('seek', 10)}>
+                <Text style={s.rcBtnSm}>⟳ 10</Text>
+              </Pressable>
+              <Pressable {...focusProps('rc-fs')} style={[s.ctrBtn, focused('rc-fs')]} onPress={() => rcmd('fs', true)}>
+                <Text style={s.rcBtnSm}>⛶</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+      </View>
+    );
+  })();
 
   // host style：全螢幕用全屏；否則絕對定位貼合量度到嘅內嵌槽
   const hostStyle = fullscreen
@@ -1952,10 +2262,10 @@ export default function App() {
           </Pressable>
         )}
 
-        {/* 中間：標題 + 播放器 */}
+        {/* 中間：標題 + 播放器（遙控器模式換成遙控面板）*/}
         <View style={s.playerCol}>
           {titleBar}
-          {playerBlock}
+          {role === 'remote' ? remotePanel : playerBlock}
           {playError && <Text style={s.err}>{playError}</Text>}
         </View>
 
@@ -2013,7 +2323,7 @@ export default function App() {
         </View>
       )}
 
-      {!fullscreen && playerBlock}
+      {!fullscreen && (role === 'remote' ? remotePanel : playerBlock)}
       {!fullscreen && titleBar}
       {playError && !fullscreen && <Text style={s.err}>{playError}</Text>}
 
@@ -2368,6 +2678,30 @@ const s = StyleSheet.create({
   seekTrack: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.32)' },
   seekFill: { position: 'absolute', left: 0, height: 4, borderRadius: 2, backgroundColor: GLOW },
   seekKnob: { position: 'absolute', width: 16, height: 16, borderRadius: 8, backgroundColor: '#fff', top: 3 },
+  // 角色 toggle + 遙控器面板
+  roleSeg: { flexDirection: 'row', borderWidth: 1, borderColor: C.line2, borderRadius: 8, overflow: 'hidden', marginRight: 8 },
+  roleSegBtn: { paddingHorizontal: 10, paddingVertical: 6 },
+  roleSegOn: { backgroundColor: 'rgba(52,225,232,0.18)' },
+  roleSegText: { color: C.muted, fontSize: 12, fontWeight: '800' },
+  roleSegTextOn: { color: C.cyan },
+  remotePanel: { backgroundColor: C.surface, padding: 14, gap: 8, justifyContent: 'flex-start' },
+  remoteHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  remoteTag: { color: C.text, fontSize: 14, fontWeight: '900' },
+  remoteCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 20 },
+  remoteHint: { color: C.text, fontSize: 15, fontWeight: '800' },
+  remoteSub: { color: C.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  rcTarget: { alignSelf: 'flex-start', backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  rcTargetText: { color: C.text, fontSize: 12, fontWeight: '700' },
+  rcTargetStatic: { color: C.muted, fontSize: 12, fontWeight: '700' },
+  rcNow: { color: C.text, fontSize: 15, fontWeight: '800', marginTop: 2 },
+  rcSeekRow: { paddingVertical: 8 },
+  rcSeekWrap: { height: 18, justifyContent: 'center' },
+  rcTime: { color: C.muted, fontSize: 12 },
+  rcRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18, marginTop: 4 },
+  rcPlay: { transform: [{ scale: 1.2 }] },
+  rcBtnIcon: { color: C.text, fontSize: 30 },
+  rcBtnOff: { color: C.mutedDim },
+  rcBtnSm: { color: C.text, fontSize: 16, fontWeight: '700' },
 
   adSkipNote: { position: 'absolute', top: 14, alignSelf: 'center', backgroundColor: 'rgba(11,14,26,0.8)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
   adSkipText: { color: '#fff', fontSize: 12, fontWeight: '700' },

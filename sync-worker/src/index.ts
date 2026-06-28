@@ -37,12 +37,69 @@ export class SyncHub {
     }
     return new Response('not found', { status: 404 });
   }
-  // hibernation handlers（收到嘢唔使做嘢;斷線清走)
-  async webSocketMessage(_ws: WebSocket, _msg: string | ArrayBuffer) {}
+
+  // roster = 各 socket serializeAttachment 落嘅 {deviceId,name,role}（濾走未 hello / 緊閂嗰個）
+  roster(excludeWs?: WebSocket): any[] {
+    const out: any[] = [];
+    for (const s of this.state.getWebSockets()) {
+      if (s === excludeWs) continue;
+      let a: any = null;
+      try {
+        a = (s as any).deserializeAttachment();
+      } catch {}
+      if (a && a.deviceId) out.push(a);
+    }
+    return out;
+  }
+  broadcastRoster(excludeWs?: WebSocket) {
+    const msg = JSON.stringify({ type: 'roster', devices: this.roster(excludeWs) });
+    for (const s of this.state.getWebSockets()) {
+      if (s === excludeWs) continue;
+      try {
+        s.send(msg);
+      } catch {}
+    }
+  }
+
+  async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
+    const data = typeof raw === 'string' ? raw : '';
+    let m: any;
+    try {
+      m = JSON.parse(data);
+    } catch {
+      return;
+    }
+    if (!m || typeof m !== 'object') return;
+    if (m.type === 'hello') {
+      (ws as any).serializeAttachment({
+        deviceId: m.deviceId,
+        name: String(m.name || '').slice(0, 64),
+        role: m.role,
+      });
+      this.broadcastRoster(); // 全部更新
+      try {
+        ws.send(JSON.stringify({ type: 'roster', devices: this.roster() })); // 即刻回 newcomer
+      } catch {}
+      return;
+    }
+    // relay 俾其他 socket —— 用 from:deviceId 排除 sender（hibernation 物件 identity 唔可靠）
+    const from = m.from;
+    for (const s of this.state.getWebSockets()) {
+      let a: any = null;
+      try {
+        a = (s as any).deserializeAttachment();
+      } catch {}
+      if (a && a.deviceId === from) continue;
+      try {
+        s.send(data);
+      } catch {}
+    }
+  }
   async webSocketClose(ws: WebSocket) {
     try {
       ws.close();
     } catch {}
+    this.broadcastRoster(ws); // roster 排除緊閂嗰個
   }
   async webSocketError(_ws: WebSocket) {}
 }
