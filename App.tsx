@@ -123,6 +123,7 @@ function PlayerOverlay(props: {
   const [playing, setPlaying] = useState(true);
   const [barW, setBarW] = useState(0);
   const barWRef = useRef(0);
+  const barXRef = useRef(0); // 進度條左邊喺螢幕嘅絕對 X（grant 時算）
   const [drag, setDrag] = useState<number | null>(null);
   const dragRef = useRef<number | null>(null);
   const shownRef = useRef(ctrlShown);
@@ -149,13 +150,18 @@ function PlayerOverlay(props: {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (e) => {
-        const x = e.nativeEvent.locationX;
+        const w = barWRef.current;
+        // 子 view 已 pointerEvents=none，grant 嘅 locationX 一定相對 seekBarWrap
+        barXRef.current = e.nativeEvent.pageX - e.nativeEvent.locationX;
+        const x = Math.min(w, Math.max(0, e.nativeEvent.locationX));
         dragRef.current = x;
         setDrag(x);
         showControls();
       },
-      onPanResponderMove: (e) => {
-        const x = e.nativeEvent.locationX;
+      onPanResponderMove: (e, gs) => {
+        const w = barWRef.current;
+        // 用絕對座標減進度條左邊，唔受拖到邊個子 view 影響
+        const x = Math.min(w, Math.max(0, gs.moveX - barXRef.current));
         dragRef.current = x;
         setDrag(x);
       },
@@ -308,9 +314,9 @@ function PlayerOverlay(props: {
                 setBarW(w);
               }}
               {...pan.panHandlers}>
-              <View style={s.seekTrack} />
-              <View style={[s.seekFill, { width: pct * barW }]} />
-              <View style={[s.seekKnob, { left: pct * barW - 8 }]} />
+              <View style={s.seekTrack} pointerEvents="none" />
+              <View style={[s.seekFill, { width: pct * barW }]} pointerEvents="none" />
+              <View style={[s.seekKnob, { left: pct * barW - 8 }]} pointerEvents="none" />
             </View>
           </View>
         </>
