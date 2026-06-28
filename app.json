@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 打直版:「我的最愛」移去搜尋行,喺收藏掣右邊\n• 標題列加「收起/控制」掣收埋控制區;移除「繼續觀看 xx:xx」"
+      "releaseNotes": "• 控制區收合掣改為「顯示 / 收起」\n• 撳 A1 變設定面板:影片來源(可多選)+ 關於(版本)"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

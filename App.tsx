@@ -1505,7 +1505,7 @@ export default function App() {
             setPanelOpen(v);
             AsyncStorage.setItem('panelOpen', v ? '1' : '0');
           }}>
-          <Text style={s.panelToggleText}>{panelOpen ? '▴ 收起' : '▾ 控制'}</Text>
+          <Text style={s.panelToggleText}>{panelOpen ? '▴ 收起' : '▾ 顯示'}</Text>
         </Pressable>
       )}
       {isLandscape && favFilterBtn}
@@ -1743,11 +1743,12 @@ export default function App() {
     }
   })();
 
-  // 來源篩選選單（multi-select：揀用邊幾個主來源，預設全選）
+  // 設定選單（撳 A1）：影片來源（可多選）+ 關於（版本）
   const siteMenu = siteOpen && (
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSiteOpen(false)}>
       <Pressable focusable={false} style={[s.spMenu, isLandscape ? s.spMenuLand : s.spMenuPort]} onPress={() => {}}>
-        <Text style={s.srcMenuTitle}>來源（可多選）</Text>
+        <Text style={s.srcMenuTitle}>設定</Text>
+        <Text style={s.spSection}>影片來源（可多選）</Text>
         {allSites.map((k, i) => {
           const on = !!enabledSites[k];
           return (
@@ -1763,6 +1764,7 @@ export default function App() {
             </Pressable>
           );
         })}
+        <Text style={s.spSection}>關於</Text>
         <Text style={s.spVer} selectable>{otaInfo}</Text>
       </Pressable>
     </Pressable>
@@ -2259,7 +2261,8 @@ const s = StyleSheet.create({
   },
   srcMenu: { width: 248, maxHeight: '70%', backgroundColor: C.surface, borderWidth: 1, borderColor: C.line2, borderRadius: 13, padding: 8 },
   srcMenuTitle: { color: C.muted, fontSize: 11, fontWeight: '800', marginBottom: 6, paddingHorizontal: 4 },
-  spVer: { color: C.mutedDim, fontSize: 10, marginTop: 8, paddingHorizontal: 4, lineHeight: 14 },
+  spSection: { color: C.cyan, fontSize: 10, fontWeight: '800', marginTop: 8, marginBottom: 4, paddingHorizontal: 4, letterSpacing: 0.5 },
+  spVer: { color: C.mutedDim, fontSize: 10, marginTop: 4, paddingHorizontal: 4, lineHeight: 14 },
   srcItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 8, marginBottom: 4, borderWidth: 2, borderColor: 'transparent' },
   srcItemOn: { backgroundColor: 'rgba(52,225,232,0.10)' },
   srcItemHi: { borderColor: C.cyan },
