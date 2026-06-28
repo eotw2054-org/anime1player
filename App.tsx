@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   AppState,
   BackHandler,
   DeviceEventEmitter,
+  Easing,
   FlatList,
   PanResponder,
   Platform,
@@ -97,6 +99,45 @@ function fmtTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s2 = Math.floor(sec % 60);
   return `${m}:${s2 < 10 ? '0' : ''}${s2}`;
+}
+
+// 走馬燈：填滿可用空間，唔 wrap；內容闊過容器先左右捲動。
+// children 渲染兩份：一份隱形（量度自然闊度），一份可見（超出先做動畫）。
+function Marquee({ children, style }: { children: ReactNode; style?: any }) {
+  const [cw, setCw] = useState(0); // 容器闊
+  const [tw, setTw] = useState(0); // 內容自然闊
+  const x = useRef(new Animated.Value(0)).current;
+  const overflow = cw > 0 && tw > cw + 1;
+  useEffect(() => {
+    x.stopAnimation();
+    x.setValue(0);
+    if (!overflow) return;
+    const dist = tw - cw;
+    const dur = Math.max(1500, Math.round(dist * 28)); // ~36px/s
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(1000),
+        Animated.timing(x, { toValue: -dist, duration: dur, easing: Easing.linear, useNativeDriver: true }),
+        Animated.delay(1000),
+        Animated.timing(x, { toValue: 0, duration: dur, easing: Easing.linear, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [overflow, tw, cw, x]);
+  return (
+    <View style={{ flex: 1, overflow: 'hidden' }} onLayout={(e) => setCw(e.nativeEvent.layout.width)}>
+      <View
+        style={{ position: 'absolute', opacity: 0, flexDirection: 'row', alignItems: 'baseline' }}
+        onLayout={(e) => setTw(e.nativeEvent.layout.width)}>
+        {children}
+      </View>
+      <Animated.View
+        style={[style, { flexDirection: 'row', alignItems: 'baseline', width: overflow ? tw : '100%', transform: [{ translateX: x }] }]}>
+        {children}
+      </Animated.View>
+    </View>
+  );
 }
 
 // 自訂播放控制（取代原生控制，等疊層上/下集同播放控制一齊 show/hide）
@@ -2463,12 +2504,17 @@ export default function App() {
       )}
 
       {!fullscreen && (role === 'remote' ? remotePanel : playerBlock)}
-      {/* 控制行：分流條（窄）· 收起 同一行（角色 toggle 已搬上頂 bar）*/}
+      {/* 控制行：片名(走馬燈，填滿空間) · 分流條 · 收起 同一行（角色 toggle 已搬上頂 bar）*/}
       {!fullscreen && selected && (
         <View style={s.portCtrlRow}>
+          {titleAnime && (
+            <Marquee>
+              <Text style={s.ctrlTitle}>{titleAnime.name}</Text>
+              <Text style={s.ctrlCount}> · 共 {chapters.length} 集</Text>
+            </Marquee>
+          )}
           {srcSelectorBtn}
           {resolving && <ActivityIndicator color={C.cyan} style={{ marginLeft: 4 }} />}
-          <View style={{ flex: 1 }} />
           <Pressable
             {...focusProps('panel-toggle')}
             style={[s.panelToggle, focused('panel-toggle')]}
@@ -2486,14 +2532,6 @@ export default function App() {
       {/* 固定控制區：揀咗動畫時鎖喺頂，唔跟清單向上捲；可用「收起 / 顯示」手動收合 */}
       {selected && panelOpen && (
         <View style={s.lockedControls}>
-          {titleAnime && (
-            <View style={s.pickerHead}>
-              <Text style={[s.pickerTitle, { flexShrink: 1 }]} numberOfLines={1}>
-                {titleAnime.name}
-              </Text>
-              <Text style={s.pickerCount}> · 共 {chapters.length} 集</Text>
-            </View>
-          )}
           {rangeTabs}
           {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridPort}
         </View>
@@ -2650,7 +2688,7 @@ const s = StyleSheet.create({
   },
   favFilterOn: { backgroundColor: 'rgba(255,77,141,0.16)', borderColor: C.rose },
   favFilterText: { color: C.muted, fontSize: 12, fontWeight: '700' },
-  panelToggle: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 10, borderWidth: 1, borderColor: C.line2, backgroundColor: C.bg },
+  panelToggle: { height: 34, justifyContent: 'center', paddingHorizontal: 11, borderRadius: 10, borderWidth: 1, borderColor: C.line2, backgroundColor: C.bg },
   panelToggleText: { color: C.cyan, fontSize: 12, fontWeight: '800' },
   favFilterTextOn: { color: C.rose },
   collectBtn: { borderRadius: 10, paddingHorizontal: 13, paddingVertical: 7, backgroundColor: C.raised },
@@ -2686,13 +2724,13 @@ const s = StyleSheet.create({
     flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    height: 34,
     gap: 6,
     backgroundColor: C.bg,
     borderWidth: 1,
     borderColor: C.line2,
     borderRadius: 9,
     paddingHorizontal: 9,
-    paddingVertical: 7,
   },
   srcBars: { color: C.cyan, fontSize: 10, letterSpacing: -1 },
   srcName: { color: C.text, fontSize: 12, fontWeight: '800', flexShrink: 1 },
@@ -2812,7 +2850,9 @@ const s = StyleSheet.create({
   brandWord: { color: C.text, fontSize: 16, fontWeight: '900', letterSpacing: 0.3, flexShrink: 1 },
   iconBtn: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 9, borderWidth: 1, borderColor: C.line2, backgroundColor: C.bg },
   iconBtnText: { color: C.muted, fontSize: 15, fontWeight: '800' },
-  portCtrlRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  portCtrlRow: { flexDirection: 'row', alignItems: 'center', height: 34, gap: 8, paddingHorizontal: 10, marginVertical: 6 },
+  ctrlTitle: { color: C.text, fontSize: 15, fontWeight: '800' },
+  ctrlCount: { color: C.muted, fontSize: 12, fontWeight: '600' },
 
   // ===== PlayerOverlay =====
   tapCatcher: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
