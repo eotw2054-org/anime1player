@@ -6,6 +6,7 @@ import {
   DeviceEventEmitter,
   FlatList,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   SectionList,
@@ -20,6 +21,7 @@ import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import * as Updates from 'expo-updates';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   type Anime,
@@ -401,6 +403,19 @@ export default function App() {
   }, [siteOpen]);
   useEffect(() => {
     fullscreenRef.current = fullscreen;
+  }, [fullscreen]);
+  // 手機版：入全螢幕自動打橫，退出自動返打直（電視固定打橫，唔郁）
+  useEffect(() => {
+    if (Platform.isTV) return;
+    (async () => {
+      try {
+        await ScreenOrientation.lockAsync(
+          fullscreen
+            ? ScreenOrientation.OrientationLock.LANDSCAPE
+            : ScreenOrientation.OrientationLock.PORTRAIT_UP
+        );
+      } catch {}
+    })();
   }, [fullscreen]);
   const setSrcHiBoth = (i: number) => {
     srcHiRef.current = i;
@@ -1980,6 +1995,19 @@ export default function App() {
       {!fullscreen && titleBar}
       {playError && !fullscreen && <Text style={s.err}>{playError}</Text>}
 
+      {/* 固定控制區：揀咗動畫時鎖喺頂，唔跟清單向上捲 */}
+      {selected && (
+        <View style={s.lockedControls}>
+          {fsRow}
+          {srcAutoRow}
+          {pickerHeader}
+          {rangeTabs}
+          {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridPort}
+        </View>
+      )}
+      {searchFavRow}
+      {selected && <View style={s.divider} />}
+
       <SectionList
         style={{ flex: 1 }}
         sections={sections}
@@ -1988,21 +2016,6 @@ export default function App() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 28 }}
         keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={
-          <View>
-            {selected && (
-              <>
-                {fsRow}
-                {srcAutoRow}
-                {pickerHeader}
-                {rangeTabs}
-                {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridPort}
-              </>
-            )}
-            {searchFavRow}
-            {selected && <View style={s.divider} />}
-          </View>
-        }
         renderSectionHeader={({ section }) => sectionHeader(section.title, section.data.length)}
         renderItem={({ item }) => renderAnimeRow(item)}
         ListEmptyComponent={<Text style={s.empty}>{tab === 'fav' ? '仲未加任何最愛' : '（無符合）'}</Text>}
@@ -2161,6 +2174,7 @@ const s = StyleSheet.create({
   rangeTextOn: { color: '#fff' },
   epScroll: { flex: 1 },
   epScrollPort: { maxHeight: 110, marginBottom: 4 }, // 3 行（30×3 + 6×2 + 8 padding）封頂，多過內部捲
+  lockedControls: { backgroundColor: C.bg }, // 揀咗動畫時固定喺頂嘅控制區（唔跟清單捲）
   epWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 8 },
   ep: { height: 30, borderRadius: 8, backgroundColor: C.raised, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   epOn: { backgroundColor: C.rose, borderColor: C.rose },
