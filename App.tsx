@@ -1231,6 +1231,12 @@ export default function App() {
         case 'fs':
           setFullscreen(m.value !== false);
           break;
+        case 'setStart':
+          setMarkField('start');
+          break;
+        case 'setEnd':
+          setMarkField('end');
+          break;
         case 'playEpisode':
           if (m.value?.url) {
             playEpisode(m.value.url, m.value.anime);
@@ -1952,16 +1958,14 @@ export default function App() {
     };
     return (
       <View style={s.remotePanel}>
-        <View style={s.remoteHead}>
-          <Text style={s.remoteTag}>🎮 遙控器</Text>
-          {!titleAnime && roleToggle}
-        </View>
         {!syncUser ? (
           <View style={s.remoteCenter}>
+            {!titleAnime && roleToggle}
             <Text style={s.remoteHint}>請先登入雲端同步（撳右上角 ☁）</Text>
           </View>
         ) : remotePlayers.length === 0 ? (
           <View style={s.remoteCenter}>
+            {!titleAnime && roleToggle}
             <Text style={s.remoteHint}>未連接到播放器</Text>
             <Text style={s.remoteSub}>喺另一部裝置開 App、設為「播放器」、登入同一帳戶</Text>
             <Pressable {...focusProps('rc-rescan')} style={[s.syncBtn, focused('rc-rescan')]} onPress={sendHello}>
@@ -1970,22 +1974,28 @@ export default function App() {
           </View>
         ) : (
           <>
-            {remotePlayers.length > 1 ? (
-              <Pressable
-                {...focusProps('rc-target')}
-                style={[s.rcTarget, focused('rc-target')]}
-                onPress={() => {
-                  const i = remotePlayers.findIndex((p) => p.deviceId === targetId);
-                  setTargetId(remotePlayers[(i + 1) % remotePlayers.length].deviceId);
-                }}>
-                <Text style={s.rcTargetText}>🖥 {target?.name ?? '揀播放器'} ▾</Text>
+            {/* 第一行：device(左) / 片名(中) / 全屏幕(右) */}
+            <View style={s.rcTopRow}>
+              {remotePlayers.length > 1 ? (
+                <Pressable
+                  {...focusProps('rc-target')}
+                  style={[s.rcTarget, focused('rc-target')]}
+                  onPress={() => {
+                    const i = remotePlayers.findIndex((p) => p.deviceId === targetId);
+                    setTargetId(remotePlayers[(i + 1) % remotePlayers.length].deviceId);
+                  }}>
+                  <Text style={s.rcTargetText} numberOfLines={1}>🖥 {target?.name ?? '揀'} ▾</Text>
+                </Pressable>
+              ) : (
+                <Text style={s.rcTargetStatic} numberOfLines={1}>🖥 {target?.name ?? remotePlayers[0]?.name}</Text>
+              )}
+              <Text style={s.rcNow} numberOfLines={1}>
+                {stale ? '連線中斷…' : st ? `${st.title ?? ''}${st.ep ? ' · 第 ' + st.ep + ' 集' : ''}` : '（未播放）'}
+              </Text>
+              <Pressable {...focusProps('rc-fs')} style={[s.rcFsBtn, focused('rc-fs')]} onPress={() => rcmd('fs', true)}>
+                <Text style={s.rcFsText}>⛶ 全屏幕</Text>
               </Pressable>
-            ) : (
-              <Text style={s.rcTargetStatic}>🖥 {target?.name ?? remotePlayers[0]?.name}</Text>
-            )}
-            <Text style={s.rcNow} numberOfLines={1}>
-              {stale ? '連線中斷…' : st ? `${st.title ?? ''}${st.ep ? ' · 第 ' + st.ep + ' 集' : ''}` : '（未播放）'}
-            </Text>
+            </View>
             <View style={s.rcSeekRow} {...rsPan.panHandlers}>
               <View
                 style={s.rcSeekWrap}
@@ -1999,26 +2009,31 @@ export default function App() {
             <Text style={s.rcTime}>
               {fmt(pos)} / {fmt(dur)}
             </Text>
+            {/* transport：五個一行 */}
             <View style={s.rcRow}>
               <Pressable {...focusProps('rc-prev')} disabled={!st?.hasPrev} style={[s.ctrBtn, focused('rc-prev')]} onPress={() => rcmd('prev')}>
                 <Text style={[s.rcBtnIcon, !st?.hasPrev && s.rcBtnOff]}>⏮</Text>
               </Pressable>
+              <Pressable {...focusProps('rc-b10')} style={[s.ctrBtn, focused('rc-b10')]} onPress={() => rcmd('seek', -10)}>
+                <Text style={s.rcBtnSm}>⟲10</Text>
+              </Pressable>
               <Pressable {...focusProps('rc-play')} hasTVPreferredFocus style={[s.ctrBtn, s.rcPlay, focused('rc-play')]} onPress={() => rcmd('toggle')}>
                 <Text style={s.rcBtnIcon}>{st?.playing ? '⏸' : '▶'}</Text>
+              </Pressable>
+              <Pressable {...focusProps('rc-f10')} style={[s.ctrBtn, focused('rc-f10')]} onPress={() => rcmd('seek', 10)}>
+                <Text style={s.rcBtnSm}>⟳10</Text>
               </Pressable>
               <Pressable {...focusProps('rc-next')} disabled={!st?.hasNext} style={[s.ctrBtn, focused('rc-next')]} onPress={() => rcmd('next')}>
                 <Text style={[s.rcBtnIcon, !st?.hasNext && s.rcBtnOff]}>⏭</Text>
               </Pressable>
             </View>
-            <View style={s.rcRow}>
-              <Pressable {...focusProps('rc-b10')} style={[s.ctrBtn, focused('rc-b10')]} onPress={() => rcmd('seek', -10)}>
-                <Text style={s.rcBtnSm}>⟲ 10</Text>
+            {/* 設開始 / 設結束：兩端 */}
+            <View style={s.rcMarkRow}>
+              <Pressable {...focusProps('rc-setstart')} style={[s.rcMarkBtn, focused('rc-setstart')]} onPress={() => rcmd('setStart')}>
+                <Text style={s.rcMarkText}>⏱ 設開始</Text>
               </Pressable>
-              <Pressable {...focusProps('rc-f10')} style={[s.ctrBtn, focused('rc-f10')]} onPress={() => rcmd('seek', 10)}>
-                <Text style={s.rcBtnSm}>⟳ 10</Text>
-              </Pressable>
-              <Pressable {...focusProps('rc-fs')} style={[s.ctrBtn, focused('rc-fs')]} onPress={() => rcmd('fs', true)}>
-                <Text style={s.rcBtnSm}>⛶</Text>
+              <Pressable {...focusProps('rc-setend')} style={[s.rcMarkBtn, focused('rc-setend')]} onPress={() => rcmd('setEnd')}>
+                <Text style={s.rcMarkText}>⏱ 設結束</Text>
               </Pressable>
             </View>
           </>
@@ -2690,18 +2705,24 @@ const s = StyleSheet.create({
   remoteCenter: { alignItems: 'center', gap: 10, paddingVertical: 28 },
   remoteHint: { color: C.text, fontSize: 15, fontWeight: '800' },
   remoteSub: { color: C.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
-  rcTarget: { alignSelf: 'flex-start', backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  rcTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rcTarget: { backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, maxWidth: 130 },
   rcTargetText: { color: C.text, fontSize: 12, fontWeight: '700' },
-  rcTargetStatic: { color: C.muted, fontSize: 12, fontWeight: '700' },
-  rcNow: { color: C.text, fontSize: 15, fontWeight: '800', marginTop: 2 },
+  rcTargetStatic: { color: C.muted, fontSize: 12, fontWeight: '700', maxWidth: 130 },
+  rcNow: { flex: 1, color: C.text, fontSize: 14, fontWeight: '800', textAlign: 'center' },
+  rcFsBtn: { backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  rcFsText: { color: C.cyan, fontSize: 12, fontWeight: '800' },
   rcSeekRow: { paddingVertical: 8 },
   rcSeekWrap: { height: 18, justifyContent: 'center' },
   rcTime: { color: C.muted, fontSize: 12 },
-  rcRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18, marginTop: 4 },
+  rcRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14, marginTop: 4 },
   rcPlay: { transform: [{ scale: 1.2 }] },
-  rcBtnIcon: { color: C.text, fontSize: 30 },
+  rcBtnIcon: { color: C.text, fontSize: 28 },
   rcBtnOff: { color: C.mutedDim },
-  rcBtnSm: { color: C.text, fontSize: 16, fontWeight: '700' },
+  rcBtnSm: { color: C.text, fontSize: 15, fontWeight: '700' },
+  rcMarkRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  rcMarkBtn: { backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  rcMarkText: { color: C.text, fontSize: 13, fontWeight: '700' },
 
   adSkipNote: { position: 'absolute', top: 14, alignSelf: 'center', backgroundColor: 'rgba(11,14,26,0.8)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
   adSkipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
