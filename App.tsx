@@ -39,6 +39,7 @@ import {
   push as syncPush,
   mergeFavorites,
   mergeByRecency,
+  SYNC_BASE,
 } from './lib/sync';
 
 // ===== 配色（style3 vibrant streaming base）=====
@@ -422,6 +423,20 @@ export default function App() {
   const [updateReady, setUpdateReady] = useState(false); // OTA：已下載新版本，等用戶確認 reload
   const [updateNotes, setUpdateNotes] = useState<string | null>(null); // OTA：新版本嘅「更新內容」
   const favoritesRef = useRef<Anime[]>([]);
+  // favAllRef：sync 真身（key → entry {...anime, at, deleted?}），含 tombstone。
+  // UI 用嘅 `favorites` state 係由佢 derive 出嚟嘅 active list（過濾 deleted）。
+  const favAllRef = useRef<Record<string, any>>({});
+  const favAllArray = () => Object.values(favAllRef.current);
+  // 套用一份 favAll（array of entries）→ 更新 ref / state / 本機儲存
+  const applyFavAll = (arr: any[]) => {
+    const map: Record<string, any> = {};
+    for (const e of arr) if (e) map[favKey(e)] = e;
+    favAllRef.current = map;
+    const active = Object.values(map).filter((e: any) => !e.deleted) as Anime[];
+    favoritesRef.current = active;
+    setFavorites(active);
+    AsyncStorage.setItem('favAll', JSON.stringify(Object.values(map)));
+  };
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const player = useVideoPlayer(null, (p) => {
@@ -522,10 +537,11 @@ export default function App() {
   // 載入設定 + 我的最愛
   useEffect(() => {
     (async () => {
-      const [s, mk, fav, fop, srcl, prog, esites, sUser, sToken] = await Promise.all([
+      const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken] = await Promise.all([
         AsyncStorage.getItem('site'),
         AsyncStorage.getItem('marks'),
         AsyncStorage.getItem('favorites'),
+        AsyncStorage.getItem('favAll'),
         AsyncStorage.getItem('fsOnPlay'),
         AsyncStorage.getItem('srcLabel'),
         AsyncStorage.getItem('progress'),
@@ -563,29 +579,30 @@ export default function App() {
           progressRef.current = JSON.parse(prog);
         } catch {}
       }
-      if (fav) {
-        try {
-          const arr = JSON.parse(fav);
-          favoritesRef.current = arr;
-          setFavorites(arr);
-        } catch {}
-      }
+      // favAll（新格式,含 tombstone）優先;冇就由舊 'favorites' array migrate(每個補 at）
+      try {
+        if (favAll) {
+          applyFavAll(JSON.parse(favAll));
+        } else if (fav) {
+          const old = JSON.parse(fav);
+          applyFavAll(Array.isArray(old) ? old.map((a: any) => ({ ...a, at: Date.now() })) : []);
+        }
+      } catch {}
       // 已登入 → 開 app 即刻拉一次雲端最新，merge 落本機
       if (sUser && sToken) {
         try {
           const remote = await syncPull(sToken);
-          const mf = mergeFavorites(favoritesRef.current, remote.favorites || [], favKey);
+          applyFavAll(mergeFavorites(favAllArray(), remote.favorites || [], favKey));
           const mp = mergeByRecency(progressRef.current, remote.progress || {});
           const mm = mergeByRecency(marksRef.current, remote.marks || {});
-          favoritesRef.current = mf;
-          setFavorites(mf);
-          AsyncStorage.setItem('favorites', JSON.stringify(mf));
           progressRef.current = mp;
           AsyncStorage.setItem('progress', JSON.stringify(mp));
           marksRef.current = mm;
           setMarks(mm);
           AsyncStorage.setItem('marks', JSON.stringify(mm));
-        } catch {}
+        } catch (e) {
+          console.warn('[sync] startup pull failed', e);
+        }
       }
     })();
   }, []);
@@ -646,16 +663,18 @@ export default function App() {
   }
 
   function toggleFav(a: Anime) {
-    setFavorites((prev) => {
-      const k = favKey(a);
-      const next = prev.some((x) => favKey(x) === k)
-        ? prev.filter((x) => favKey(x) !== k)
-        : [{ ...a }, ...prev];
-      AsyncStorage.setItem('favorites', JSON.stringify(next));
-      favoritesRef.current = next;
-      pushNow();
-      return next;
-    });
+    const k = favKey(a);
+    const cur = favAllRef.current[k];
+    const isActive = cur && !cur.deleted;
+    const nextMap = { ...favAllRef.current };
+    if (isActive) {
+      // 軟刪除:寫 tombstone（帶 at），唔好淨係 filter 走 —— 咁先傳播到其他裝置 + 防復活
+      nextMap[k] = { site: a.site, slug: a.slug, deleted: true, at: Date.now() };
+    } else {
+      nextMap[k] = { ...a, at: Date.now() };
+    }
+    applyFavAll(Object.values(nextMap)); // 更新 ref/state/儲存（active list 自動過濾 tombstone）
+    pushNow();
   }
 
   async function openAnime(a: Anime) {
@@ -929,18 +948,17 @@ export default function App() {
     if (!token) return;
     try {
       const remote = await syncPull(token);
-      const mf = mergeFavorites(favoritesRef.current, remote.favorites || [], favKey);
+      applyFavAll(mergeFavorites(favAllArray(), remote.favorites || [], favKey));
       const mp = mergeByRecency(progressRef.current, remote.progress || {});
       const mm = mergeByRecency(marksRef.current, remote.marks || {});
-      favoritesRef.current = mf;
-      setFavorites(mf);
-      AsyncStorage.setItem('favorites', JSON.stringify(mf));
       progressRef.current = mp;
       AsyncStorage.setItem('progress', JSON.stringify(mp));
       marksRef.current = mm;
       setMarks(mm);
       AsyncStorage.setItem('marks', JSON.stringify(mm));
-    } catch {}
+    } catch (e) {
+      console.warn('[sync] pull failed', e);
+    }
   };
 
   // 雲端同步：即時推上去（清走未發嘅 debounce）—— 用喺離散、重要嘅改動（最愛、開始/結束）
@@ -952,10 +970,10 @@ export default function App() {
     const token = syncTokenRef.current;
     if (!token) return;
     syncPush(token, {
-      favorites: favoritesRef.current,
+      favorites: favAllArray(),
       progress: progressRef.current,
       marks: marksRef.current,
-    }).catch(() => {});
+    }).catch((e) => console.warn('[sync] push failed', e));
   };
   // 雲端同步：debounce 推上去（登入咗先做）—— 用喺頻繁嘅改動（播放進度）
   const scheduleSyncPush = () => {
@@ -976,13 +994,9 @@ export default function App() {
     try {
       const token = mode === 'signup' ? await syncSignup(name, syncPass) : await syncLogin(name, syncPass);
       const remote = await syncPull(token);
-      const mergedFav = mergeFavorites(favoritesRef.current, remote.favorites || [], favKey);
+      applyFavAll(mergeFavorites(favAllArray(), remote.favorites || [], favKey));
       const mergedProg = mergeByRecency(progressRef.current, remote.progress || {});
       const mergedMarks = mergeByRecency(marksRef.current, remote.marks || {});
-      // 套用落本機
-      favoritesRef.current = mergedFav;
-      setFavorites(mergedFav);
-      AsyncStorage.setItem('favorites', JSON.stringify(mergedFav));
       progressRef.current = mergedProg;
       AsyncStorage.setItem('progress', JSON.stringify(mergedProg));
       marksRef.current = mergedMarks;
@@ -994,7 +1008,7 @@ export default function App() {
       AsyncStorage.setItem('syncUser', name);
       AsyncStorage.setItem('syncToken', token);
       // 把合併結果推返雲端
-      syncPush(token, { favorites: mergedFav, progress: mergedProg, marks: mergedMarks }).catch(() => {});
+      syncPush(token, { favorites: favAllArray(), progress: mergedProg, marks: mergedMarks }).catch((e) => console.warn('[sync] push failed', e));
       setSyncOpen(false);
       setSyncPass('');
     } catch (e: any) {
@@ -1019,11 +1033,13 @@ export default function App() {
     try {
       await pullMerge();
       await syncPush(token, {
-        favorites: favoritesRef.current,
+        favorites: favAllArray(),
         progress: progressRef.current,
         marks: marksRef.current,
       });
-    } catch {}
+    } catch (e) {
+      console.warn('[sync] manual sync failed', e);
+    }
     setSyncingNow(false);
   };
 
@@ -1040,6 +1056,62 @@ export default function App() {
     return () => {
       clearInterval(id);
       sub.remove();
+    };
+  }, [syncUser]);
+
+  // 即時同步：登入期間開一條 WebSocket 去 sync hub（DO）。
+  // 對方裝置改動 → server broadcast「changed」→ 即刻 pullMerge（sub-second）。60s poll 做 fallback。
+  useEffect(() => {
+    if (!syncUser) return;
+    let alive = true;
+    let ws: WebSocket | null = null;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    const connect = () => {
+      const token = syncTokenRef.current;
+      if (!alive || !token) return;
+      try {
+        ws = new WebSocket(SYNC_BASE.replace(/^http/, 'ws') + '/ws?token=' + encodeURIComponent(token));
+      } catch {
+        scheduleRetry();
+        return;
+      }
+      ws.onmessage = (e: any) => {
+        try {
+          if (JSON.parse(e.data)?.type === 'changed') pullMerge();
+        } catch {}
+      };
+      ws.onclose = scheduleRetry;
+      ws.onerror = () => {
+        try {
+          ws?.close();
+        } catch {}
+      };
+    };
+    const scheduleRetry = () => {
+      if (!alive || retry) return;
+      retry = setTimeout(() => {
+        retry = null;
+        connect();
+      }, 5000);
+    };
+    connect();
+    // app 返前台時,若 socket 斷咗就即刻重連 + pull 一次補返
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active' && alive && (!ws || ws.readyState > 1)) {
+        if (retry) {
+          clearTimeout(retry);
+          retry = null;
+        }
+        connect();
+      }
+    });
+    return () => {
+      alive = false;
+      if (retry) clearTimeout(retry);
+      sub.remove();
+      try {
+        ws?.close();
+      } catch {}
     };
   }, [syncUser]);
 

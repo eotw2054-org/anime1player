@@ -43,15 +43,25 @@ export async function push(token: string, data: SyncData): Promise<void> {
 }
 
 // ===== 合併策略 =====
-// favorites：兩邊聯集（key = site|slug）。progress / marks：逐 key 取較新（at 大者）。
+// favorites：per-key last-write-wins（靠每個 entry 嘅 `at`），支援 tombstone（`deleted:true`）。
+//   - 兩邊同一 key 取 `at` 大者。
+//   - winner 係 tombstone → 保留落 merged set(俾佢繼續傳播、壓住復活),UI 層先過濾 deleted。
+//   - 超過 30 日嘅 tombstone 先 GC,避免無限增長。
+// 入面每個 entry：{ site, slug, ...anime, at:number, deleted?:boolean }
+const TOMB_TTL = 30 * 24 * 60 * 60 * 1000;
 export function mergeFavorites(local: any[] = [], remote: any[] = [], keyOf: (a: any) => string): any[] {
-  const seen = new Set<string>();
+  const byKey = new Map<string, any>();
+  for (const e of [...remote, ...local]) {
+    if (!e) continue;
+    const k = keyOf(e);
+    const prev = byKey.get(k);
+    if (!prev || (e.at ?? 0) >= (prev.at ?? 0)) byKey.set(k, e);
+  }
+  const cutoff = Date.now() - TOMB_TTL;
   const out: any[] = [];
-  for (const a of [...local, ...remote]) {
-    const k = keyOf(a);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(a);
+  for (const e of byKey.values()) {
+    if (e.deleted && (e.at ?? 0) < cutoff) continue; // GC 舊 tombstone
+    out.push(e);
   }
   return out;
 }

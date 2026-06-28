@@ -8,6 +8,43 @@ import { createClient, type Client } from '@libsql/client/web';
 interface Env {
   TURSO_DATABASE_URL: string;
   TURSO_AUTH_TOKEN: string;
+  SYNC_HUB: DurableObjectNamespace;
+}
+
+// 每個 user 一個 DO：協調佢幾部裝置嘅 WebSocket，data 一變就 broadcast「changed」叫對方 pull。
+// 用 WebSocket Hibernation（idle 唔收費）+ SQLite-backed（free plan 可用）。唔存 data,純 pub/sub。
+export class SyncHub {
+  state: DurableObjectState;
+  constructor(state: DurableObjectState) {
+    this.state = state;
+  }
+  async fetch(req: Request): Promise<Response> {
+    const url = new URL(req.url);
+    if (url.pathname === '/connect') {
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
+      this.state.acceptWebSocket(server); // hibernation：唔使長駐 memory
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    if (url.pathname === '/notify') {
+      const msg = JSON.stringify({ type: 'changed', at: Date.now() });
+      for (const ws of this.state.getWebSockets()) {
+        try {
+          ws.send(msg);
+        } catch {}
+      }
+      return new Response('ok');
+    }
+    return new Response('not found', { status: 404 });
+  }
+  // hibernation handlers（收到嘢唔使做嘢;斷線清走)
+  async webSocketMessage(_ws: WebSocket, _msg: string | ArrayBuffer) {}
+  async webSocketClose(ws: WebSocket) {
+    try {
+      ws.close();
+    } catch {}
+  }
+  async webSocketError(_ws: WebSocket) {}
 }
 
 const enc = new TextEncoder();
@@ -70,6 +107,17 @@ export default {
     try {
       await ensureSchema(db);
 
+      // ---- WebSocket：即時同步（token 經 query string 因為 RN WS 唔易設 header）----
+      if (url.pathname === '/ws') {
+        const token = url.searchParams.get('token') || '';
+        if (!token) return json({ error: 'no token' }, 401);
+        const u = await db.execute({ sql: 'SELECT id FROM users WHERE token = ?', args: [token] });
+        const urow = u.rows[0];
+        if (!urow) return json({ error: 'invalid token' }, 401);
+        const id = env.SYNC_HUB.idFromName('user:' + Number(urow.id));
+        return env.SYNC_HUB.get(id).fetch(new Request('https://do/connect', req));
+      }
+
       // ---- 註冊 ----
       if (url.pathname === '/signup' && req.method === 'POST') {
         const { username, password } = (await req.json()) as any;
@@ -130,6 +178,11 @@ export default {
                 ON CONFLICT(user_id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at`,
           args: [userId, data, Date.now()],
         });
+        // 通知該 user 其他裝置即時 pull（即時同步）
+        try {
+          const hub = env.SYNC_HUB.get(env.SYNC_HUB.idFromName('user:' + userId));
+          await hub.fetch('https://do/notify');
+        } catch {}
         return json({ ok: true });
       }
 
