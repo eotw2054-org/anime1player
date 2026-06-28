@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 修正:切去「遙控器」後,手機唔會再繼續播放(會即刻停 + 收聲)"
+      "releaseNotes": "• 揀套戲就跟住切換:而家揀一套未播過嘅戲,播放器會即刻切過去播(以前只有睇過嘅戲先切)\n• 遙控器一樣:手機揀套戲就叫投影機切去播"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
