@@ -30,7 +30,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 同步視窗:文案改為即時同步;登出掣移去右上角(免撳錯)\n• 遙控:同步視窗 / 來源選單 / 更新提示 而家用得遙控器操作"
+      "releaseNotes": "• 新增「自動選擇最佳片源」:切換動畫時自動探測各片源速度,揀最快嗰個先開始播\n• 換集數唔會再重新探測,沿用最快片源,順暢唔打斷"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

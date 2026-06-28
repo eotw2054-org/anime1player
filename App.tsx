@@ -366,6 +366,11 @@ export default function App() {
   const rootRef = useRef<View>(null);
   const playerSlotRef = useRef<View>(null);
   const [fsOnPlay, setFsOnPlay] = useState(false);
+  const [autoBest, setAutoBest] = useState(false);
+  const autoBestRef = useRef(false);
+  useEffect(() => {
+    autoBestRef.current = autoBest;
+  });
   const [ctrlShown, setCtrlShown] = useState(true);
   const [srcOpen, setSrcOpen] = useState(false);
   const [siteOpen, setSiteOpen] = useState(false);
@@ -537,7 +542,7 @@ export default function App() {
   // 載入設定 + 我的最愛
   useEffect(() => {
     (async () => {
-      const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken] = await Promise.all([
+      const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken, ab] = await Promise.all([
         AsyncStorage.getItem('site'),
         AsyncStorage.getItem('marks'),
         AsyncStorage.getItem('favorites'),
@@ -548,6 +553,7 @@ export default function App() {
         AsyncStorage.getItem('enabledSites'),
         AsyncStorage.getItem('syncUser'),
         AsyncStorage.getItem('syncToken'),
+        AsyncStorage.getItem('autoBest'),
       ]);
       if (sUser && sToken) {
         setSyncUser(sUser);
@@ -573,6 +579,7 @@ export default function App() {
         } catch {}
       }
       if (fop === '1') setFsOnPlay(true);
+      if (ab === '1') setAutoBest(true);
       if (srcl) setPreferredLabel(srcl);
       if (prog) {
         try {
@@ -719,24 +726,39 @@ export default function App() {
     try {
       const info = await parseEpisode(url);
       if (!info.streams.length) throw new Error('找唔到播放器來源');
-      const pref = preferredRef.current;
-      let idx = pref ? info.streams.findIndex((x) => x.label === pref) : -1;
-      if (idx < 0) idx = 0;
+      // 切換「影片」（換咗一套）先做最佳片源探測；同一套換 chapter 唔再 detect（基本上唔會轉）
+      const prevAnime = currentRef.current?.anime;
+      const isNewAnime = !prevAnime || favKey(prevAnime) !== favKey(anime);
+      let streams = info.streams;
+      let idx: number;
+      let probed = false;
+      if (autoBestRef.current && isNewAnime && streams.length >= 2) {
+        // 切換影片：先探測揀最快，至開始播（會等多幾秒，值得）
+        streams = await probeStreams(streams);
+        idx = 0;
+        probed = true;
+        preferredRef.current = streams[0].label; // 同套之後嘅 chapter 沿用呢個來源
+      } else {
+        const pref = preferredRef.current;
+        idx = pref ? streams.findIndex((x) => x.label === pref) : -1;
+        if (idx < 0) idx = 0;
+      }
       // 喺 replace 之前擷取呢套嘅開頭（readyToPlay 用 startAtRef，唔靠未更新嘅 currentRef）
       startAtRef.current = marksRef.current[favKey(anime)]?.start ?? null;
-      const ok = await loadStream(info.streams, idx);
+      const ok = await loadStream(streams, idx);
       setCurrent({
         anime,
         episodeUrl: url,
         episodeNo: info.episodeNo,
-        streams: info.streams,
+        streams,
         streamIndex: idx,
         prevUrl: info.prevUrl,
         nextUrl: info.nextUrl,
       });
       if (fsOnPlay) setFullscreen(true);
       if (!ok) setPlayError('無法解析此來源，試下切換來源');
-      probeAndSort(url, info.streams); // 背景探測速度後重新排序
+      // 未探測過先背景探測排序（顯示 ms）；自動最佳已經喺上面探測過,唔使再做
+      if (!probed) probeAndSort(url, streams);
     } catch (e: any) {
       setPlayError(e?.message || '載入失敗');
     } finally {
@@ -744,9 +766,8 @@ export default function App() {
     }
   }
 
-  // 背景：對每個來源做輕量 TTFB 探測，由快到慢排序（最快置頂）
-  async function probeAndSort(episodeUrl: string, streams: Current['streams']) {
-    if (streams.length < 2) return;
+  // 對每個來源做輕量 TTFB 探測，回傳由快到慢排序嘅清單（最快置頂，逾時 = Infinity）
+  async function probeStreams(streams: Current['streams']): Promise<Current['streams']> {
     const withTimeout = (p: Promise<any>, ms: number) =>
       Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('t')), ms))]);
     const timed = await Promise.all(
@@ -754,22 +775,53 @@ export default function App() {
         const t0 = Date.now();
         let ms = Infinity;
         try {
-          await withTimeout(
-            fetch(st.embedUrl, { headers: { 'User-Agent': UA } }),
-            6000
-          );
+          await withTimeout(fetch(st.embedUrl, { headers: { 'User-Agent': UA } }), 6000);
           ms = Date.now() - t0;
         } catch {}
         return { ...st, ms };
       })
     );
     timed.sort((a, b) => (a.ms ?? Infinity) - (b.ms ?? Infinity));
+    return timed;
+  }
+
+  // 背景：探測後重新排序（最快置頂），唔切換正喺播緊嘅來源
+  async function probeAndSort(episodeUrl: string, streams: Current['streams']) {
+    if (streams.length < 2) return;
+    const timed = await probeStreams(streams);
     setCurrent((c) => {
       if (!c || c.episodeUrl !== episodeUrl) return c;
       const curLabel = c.streams[c.streamIndex]?.label;
       const newIndex = Math.max(0, timed.findIndex((x) => x.label === curLabel));
       return { ...c, streams: timed, streamIndex: newIndex };
     });
+  }
+
+  // 即時：探測目前集數所有來源，切去最快嗰個（揀「自動選擇最佳片源」開關時用）
+  async function applyBestSource() {
+    const c = currentRef.current;
+    if (!c || c.streams.length < 2) return;
+    setResolving(true);
+    try {
+      const timed = await probeStreams(c.streams);
+      const curLabel = c.streams[c.streamIndex]?.label;
+      const best = timed[0];
+      if (best && best.ms !== Infinity && best.label !== curLabel) {
+        try {
+          resumeAtRef.current = player.currentTime;
+        } catch {}
+        const ok = await loadStream(timed, 0);
+        preferredRef.current = best.label; // 同套之後嘅 chapter 沿用
+        if (!ok) setPlayError('最佳來源無法播放，試下手動切換');
+      }
+      setCurrent((x) => {
+        if (!x || x.episodeUrl !== c.episodeUrl) return x;
+        const newIndex = Math.max(0, timed.findIndex((t) => t.label === preferredRef.current));
+        return { ...x, streams: timed, streamIndex: newIndex };
+      });
+    } finally {
+      setResolving(false);
+    }
   }
 
   async function loadStream(streams: Current['streams'], idx: number): Promise<boolean> {
@@ -1527,6 +1579,22 @@ export default function App() {
         <Text style={s.toggleLabel}>播放即全螢幕</Text>
         <View style={[s.switch, fsOnPlay && s.switchOn]}>
           <View style={[s.knob, fsOnPlay && s.knobOn]} />
+        </View>
+      </Pressable>
+      <Pressable
+        {...focusProps('auto-best')}
+        style={[s.toggleRow, focused('auto-best')]}
+        onPress={() => {
+          const v = !autoBest;
+          setAutoBest(v);
+          autoBestRef.current = v;
+          AsyncStorage.setItem('autoBest', v ? '1' : '0');
+          // 即開即生效：若有播緊嘅集，立即探測 + 切去最快來源
+          if (v) applyBestSource();
+        }}>
+        <Text style={s.toggleLabel}>自動選擇最佳片源</Text>
+        <View style={[s.switch, autoBest && s.switchOn]}>
+          <View style={[s.knob, autoBest && s.knobOn]} />
         </View>
       </Pressable>
       <Pressable
