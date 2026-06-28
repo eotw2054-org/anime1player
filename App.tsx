@@ -1595,13 +1595,14 @@ export default function App() {
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSiteOpen(false)}>
       <Pressable focusable={false} style={[s.spMenu, isLandscape ? s.spMenuLand : s.spMenuPort]} onPress={() => {}}>
         <Text style={s.srcMenuTitle}>來源（可多選）</Text>
-        {allSites.map((k) => {
+        {allSites.map((k, i) => {
           const on = !!enabledSites[k];
           return (
             <Pressable
               key={k}
-              focusable={false}
-              style={[s.spOpt, on && s.spOptOn]}
+              {...focusProps('site-' + k)}
+              hasTVPreferredFocus={i === 0}
+              style={[s.spOpt, on && s.spOptOn, focused('site-' + k)]}
               onPress={() => toggleSite(k)}>
               <View style={[s.spDot, !on && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
               <Text style={[s.spOptText, on && s.spOptTextOn]}>anime1.{k}</Text>
@@ -1658,20 +1659,22 @@ export default function App() {
         <Text style={s.syncSub}>登入後，我的最愛 / 觀看進度 / 開始結束時間 跨裝置同步</Text>
         {syncUser ? (
           <>
+            {/* 登出放右上角細掣,免撳錯 */}
+            <Pressable
+              {...focusProps('sync-logout')}
+              style={[s.syncLogout, focused('sync-logout')]}
+              onPress={doLogout}>
+              <Text style={s.syncLogoutText}>登出</Text>
+            </Pressable>
             <Text style={s.syncWho}>已登入：{syncUser}</Text>
-            <Text style={s.syncSub}>每 60 秒自動同步；亦可手動即刻同步</Text>
+            <Text style={s.syncSub}>改動即時同步（WebSocket）；亦可手動即刻同步</Text>
             <Pressable
               {...focusProps('sync-now')}
+              hasTVPreferredFocus
               disabled={syncingNow}
               style={[s.syncBtn, focused('sync-now')]}
               onPress={doSyncNow}>
               <Text style={s.syncBtnText}>{syncingNow ? '同步中…' : '🔄 立即同步'}</Text>
-            </Pressable>
-            <Pressable
-              {...focusProps('sync-logout')}
-              style={[s.syncBtnGhost, focused('sync-logout')]}
-              onPress={doLogout}>
-              <Text style={s.syncBtnGhostText}>登出</Text>
             </Pressable>
           </>
         ) : (
@@ -1699,6 +1702,7 @@ export default function App() {
             <View style={s.syncRow}>
               <Pressable
                 {...focusProps('sync-login')}
+                hasTVPreferredFocus
                 disabled={syncBusy}
                 style={[s.syncBtn, { flex: 1 }, focused('sync-login')]}
                 onPress={() => doAuth('login')}>
@@ -1731,6 +1735,7 @@ export default function App() {
         ) : null}
         <Pressable
           {...focusProps('ota-apply')}
+          hasTVPreferredFocus
           style={[s.syncBtn, focused('ota-apply')]}
           onPress={applyUpdate}>
           <Text style={s.syncBtnText}>立即更新</Text>
@@ -2168,6 +2173,8 @@ const s = StyleSheet.create({
     backgroundColor: C.bg,
   },
   syncBtnGhostText: { color: C.text, fontSize: 14, fontWeight: '800' },
+  syncLogout: { position: 'absolute', top: 8, right: 10, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  syncLogoutText: { color: C.muted, fontSize: 12, fontWeight: '700' },
 
   // ===== Portrait =====
   appbar: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 12, paddingVertical: 8 },
