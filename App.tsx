@@ -1286,6 +1286,7 @@ export default function App() {
   };
   // 遙控器：揀片 → 叫投影機播（唔喺手機播）
   const remotePlay = (url: string, anime: Anime) => {
+    if (remoteLockedRef.current) return; // 遙控鎖定中：唔送（防誤觸）
     // 讀 targetIdRef.current（唔讀 closure targetId）；未鎖定 target 就 no-op，
     // 否則 null targetId 會被所有 player 一齊執行。
     const tid = targetIdRef.current;
@@ -1960,6 +1961,16 @@ export default function App() {
     </View>
   );
 
+  // 遙控器「鎖定」：開咗 lock 就唔送任何 cmd 俾播放器（即暫時斷控制，防誤觸）
+  const [remoteLocked, setRemoteLocked] = useState(false);
+  const remoteLockedRef = useRef(false);
+  const toggleRemoteLock = () => {
+    setRemoteLocked((v) => {
+      remoteLockedRef.current = !v;
+      return !v;
+    });
+  };
+
   // 遙控器進度條（拖放 → seekTo）
   const rsBarWRef = useRef(0);
   const rsBarXRef = useRef(0);
@@ -1967,8 +1978,8 @@ export default function App() {
   const rsDragRef = useRef<number | null>(null);
   const rsPan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => !remoteLockedRef.current,
+      onMoveShouldSetPanResponder: () => !remoteLockedRef.current,
       onPanResponderGrant: (e) => {
         const w = rsBarWRef.current;
         rsBarXRef.current = e.nativeEvent.pageX - e.nativeEvent.locationX;
@@ -1995,8 +2006,10 @@ export default function App() {
 
   const remotePanel = (() => {
     void remoteTick; // 每 0.5s 重算進度
-    const rcmd = (action: string, value?: any) =>
+    const rcmd = (action: string, value?: any) => {
+      if (remoteLockedRef.current) return; // 鎖定中：唔送 cmd（防誤觸）
       wsSend({ type: 'cmd', targetId: targetIdRef.current, action, value });
+    };
     const st = remoteState;
     const stale = st && Date.now() - st._recvAt > 6000;
     const dur = st?.duration || 0;
@@ -2080,15 +2093,22 @@ export default function App() {
                 <Text style={[s.rcBtnIcon, !st?.hasNext && s.rcBtnOff]}>⏭</Text>
               </Pressable>
             </View>
-            {/* 設開始 / 設結束：兩端 */}
+            {/* 設開始 / 🔒鎖定 / 設結束 */}
             <View style={s.rcMarkRow}>
               <Pressable {...focusProps('rc-setstart')} style={[s.rcMarkBtn, focused('rc-setstart')]} onPress={() => rcmd('setStart')}>
                 <Text style={s.rcMarkText}>⏱ 設開始</Text>
+              </Pressable>
+              <Pressable
+                {...focusProps('rc-lock')}
+                style={[s.rcLockBtn, remoteLocked && s.rcLockOn, focused('rc-lock')]}
+                onPress={toggleRemoteLock}>
+                <Text style={[s.rcLockText, remoteLocked && s.rcLockTextOn]}>{remoteLocked ? '🔒' : '🔓'}</Text>
               </Pressable>
               <Pressable {...focusProps('rc-setend')} style={[s.rcMarkBtn, focused('rc-setend')]} onPress={() => rcmd('setEnd')}>
                 <Text style={s.rcMarkText}>⏱ 設結束</Text>
               </Pressable>
             </View>
+            {remoteLocked && <Text style={s.rcLockHint}>🔒 已鎖定 · 唔會控制播放器（防誤觸）</Text>}
           </>
         )}
       </View>
@@ -2815,6 +2835,11 @@ const s = StyleSheet.create({
   rcMarkRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   rcMarkBtn: { backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   rcMarkText: { color: C.text, fontSize: 13, fontWeight: '700' },
+  rcLockBtn: { backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+  rcLockOn: { backgroundColor: C.cyan },
+  rcLockText: { color: C.muted, fontSize: 16, fontWeight: '800' },
+  rcLockTextOn: { color: C.bg },
+  rcLockHint: { color: C.cyan, fontSize: 12, fontWeight: '700', textAlign: 'center', marginTop: 6 },
 
   adSkipNote: { position: 'absolute', top: 14, alignSelf: 'center', backgroundColor: 'rgba(11,14,26,0.8)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
   adSkipText: { color: '#fff', fontSize: 12, fontWeight: '700' },

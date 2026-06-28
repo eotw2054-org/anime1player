@@ -19,5 +19,5 @@
 
 ## 4. 部署
 
-- [ ] 4.1 OTA 發佈(`scripts/publish-ota.mjs`)+ 改 `app.json` `releaseNotes`
-- [ ] 4.2 跟 memory 規矩:開 branch + review → `--no-ff` merge + push
+- [x] 4.1 OTA 發佈:改 `app.json` `releaseNotes` + push master 觸發「Publish OTA」Action(`.github/workflows/ota.yml`)
+- [x] 4.2 跟 memory 規矩:branch `feat/switch-anime-follows-selection` + review → `--no-ff` merge master + push(`5784154..3c9760b`)
