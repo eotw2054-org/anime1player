@@ -3,5 +3,5 @@
   "compilerOptions": {
     "strict": true
   },
-  "exclude": ["poc"]
+  "exclude": ["poc", "ota-worker", "sync-worker", "dist"]
 }
