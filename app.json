@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 自定義名稱輸入框:遙控器/D-pad 可以 focus,撳 OK 彈系統鍵盤打字\n• A1 設定可捲動,「允許遠端遙控」預設開"
+      "releaseNotes": "• 修正:切去「遙控器」後,手機唔會再繼續播放(會即刻停 + 收聲)"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

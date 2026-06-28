@@ -513,6 +513,13 @@ export default function App() {
 
   // 記錄每套動畫的播放進度（節流存檔）
   useEventListener(player, 'timeUpdate', () => {
+    // 遙控器模式唔應該本機播 —— 一 detect 到喺播就即刻停（保險,擋任何 re-play）
+    if (roleRef.current === 'remote') {
+      try {
+        if (player.playing) player.pause();
+      } catch {}
+      return;
+    }
     const c = currentRef.current;
     if (!c) return;
     let t = 0;
@@ -1267,6 +1274,11 @@ export default function App() {
     roleRef.current = role;
     allowRemoteRef.current = allowRemote;
     sendHello();
+    if (role === 'remote') {
+      try {
+        player.pause();
+      } catch {}
+    }
   }, [role, deviceName, allowRemote]);
 
   // 遙控器：每 0.5s tick 推算進度條
