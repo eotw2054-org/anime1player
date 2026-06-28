@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• A1 設定加「允許遠端遙控」(預設關;開咗先可以被其他裝置遙控)\n• A1 設定可改「自定義名稱」(例如 Projector),會顯示喺遙控器嘅播放器清單"
+      "releaseNotes": "• A1 設定面板而家可以捲動,遙控器/D-pad 落得到去「遙控」設定\n• 「允許遠端遙控」預設開;可改「自定義名稱」(例如 Projector)顯示喺遙控器播放器清單"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
