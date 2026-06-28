@@ -445,8 +445,8 @@ export default function App() {
   const [deviceName, setDeviceName] = useState('');
   const [role, setRole] = useState<'player' | 'remote'>('player');
   const roleRef = useRef<'player' | 'remote'>('player');
-  const [allowRemote, setAllowRemote] = useState(false); // 預設關：開咗先可以被遙控
-  const allowRemoteRef = useRef(false);
+  const [allowRemote, setAllowRemote] = useState(true); // 預設開（可被遙控）
+  const allowRemoteRef = useRef(true);
   const wsRef = useRef<WebSocket | null>(null);
   const [remotePlayers, setRemotePlayers] = useState<any[]>([]); // roster 入面 role=player
   const [targetId, setTargetId] = useState<string | null>(null);
@@ -609,10 +609,9 @@ export default function App() {
         setRole(dRole);
         roleRef.current = dRole;
       }
-      if (dAllow === '1') {
-        setAllowRemote(true);
-        allowRemoteRef.current = true;
-      }
+      const aon = dAllow !== '0'; // 預設開,除非曾經明確關閉
+      setAllowRemote(aon);
+      allowRemoteRef.current = aon;
       if (sUser && sToken) {
         setSyncUser(sUser);
         syncTokenRef.current = sToken;
@@ -2094,6 +2093,7 @@ export default function App() {
   const siteMenu = siteOpen && (
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSiteOpen(false)}>
       <Pressable focusable={false} style={[s.spMenu, isLandscape ? s.spMenuLand : s.spMenuPort]} onPress={() => {}}>
+        <ScrollView showsVerticalScrollIndicator nestedScrollEnabled keyboardShouldPersistTaps="handled">
         <Text style={s.srcMenuTitle}>設定</Text>
         <Text style={s.spSection}>影片來源（可多選）</Text>
         {allSites.map((k, i) => {
@@ -2139,6 +2139,7 @@ export default function App() {
         />
         <Text style={s.spSection}>關於</Text>
         <Text style={s.spVer} selectable>{otaInfo}</Text>
+        </ScrollView>
       </Pressable>
     </Pressable>
   );
@@ -2472,7 +2473,7 @@ const s = StyleSheet.create({
   spDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.cyan, shadowColor: C.cyan, shadowRadius: 6, shadowOpacity: 1 },
   spName: { color: C.text, fontSize: 13, fontWeight: '800', flex: 1 },
   spCar: { color: C.muted, fontSize: 11 },
-  spMenu: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line2, borderRadius: 12, padding: 6, width: 220 },
+  spMenu: { backgroundColor: C.surface, borderWidth: 1, borderColor: C.line2, borderRadius: 12, padding: 6, width: 220, maxHeight: 360 },
   spMenuLand: { position: 'absolute', top: 64, left: 60 },
   spMenuPort: { position: 'absolute', top: 64, left: 56 },
   spOpt: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 8 },
