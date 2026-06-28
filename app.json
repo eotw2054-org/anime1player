@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 打直版控制區重新排版:播放器/遙控器 toggle 搬上頂 bar(配 Anime1Player logo);片名(太長會走馬燈)、共 N 集、分流條、收起 全部同一行同高;自動最佳片源/播放即全螢幕 收入頂 bar 嘅 ⚙ 設定;移除大粒全螢幕播放掣"
+      "releaseNotes": "• 打直版控制區重新排版:播放器/遙控器 toggle 搬上頂 bar(配 Anime1Player logo);片名(太長截斷)、共 N 集、分流條、收起 全部同一行同高;自動最佳片源/播放即全螢幕 收入頂 bar 嘅 ⚙ 設定;移除大粒全螢幕播放掣"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

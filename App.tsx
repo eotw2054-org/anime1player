@@ -1,11 +1,9 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
   AppState,
   BackHandler,
   DeviceEventEmitter,
-  Easing,
   FlatList,
   PanResponder,
   Platform,
@@ -99,45 +97,6 @@ function fmtTime(sec: number): string {
   const m = Math.floor(sec / 60);
   const s2 = Math.floor(sec % 60);
   return `${m}:${s2 < 10 ? '0' : ''}${s2}`;
-}
-
-// 走馬燈：填滿可用空間，唔 wrap；內容闊過容器先左右捲動。
-// children 渲染兩份：一份隱形（量度自然闊度），一份可見（超出先做動畫）。
-function Marquee({ children, style }: { children: ReactNode; style?: any }) {
-  const [cw, setCw] = useState(0); // 容器闊
-  const [tw, setTw] = useState(0); // 內容自然闊
-  const x = useRef(new Animated.Value(0)).current;
-  const overflow = cw > 0 && tw > cw + 1;
-  useEffect(() => {
-    x.stopAnimation();
-    x.setValue(0);
-    if (!overflow) return;
-    const dist = tw - cw;
-    const dur = Math.max(1500, Math.round(dist * 28)); // ~36px/s
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.delay(1000),
-        Animated.timing(x, { toValue: -dist, duration: dur, easing: Easing.linear, useNativeDriver: true }),
-        Animated.delay(1000),
-        Animated.timing(x, { toValue: 0, duration: dur, easing: Easing.linear, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [overflow, tw, cw, x]);
-  return (
-    <View style={{ flex: 1, overflow: 'hidden' }} onLayout={(e) => setCw(e.nativeEvent.layout.width)}>
-      <View
-        style={{ position: 'absolute', opacity: 0, flexDirection: 'row', alignItems: 'baseline' }}
-        onLayout={(e) => setTw(e.nativeEvent.layout.width)}>
-        {children}
-      </View>
-      <Animated.View
-        style={[style, { flexDirection: 'row', alignItems: 'baseline', width: overflow ? tw : '100%', transform: [{ translateX: x }] }]}>
-        {children}
-      </Animated.View>
-    </View>
-  );
 }
 
 // 自訂播放控制（取代原生控制，等疊層上/下集同播放控制一齊 show/hide）
@@ -2508,10 +2467,15 @@ export default function App() {
       {!fullscreen && selected && (
         <View style={s.portCtrlRow}>
           {titleAnime && (
-            <Marquee>
-              <Text style={s.ctrlTitle}>{titleAnime.name}</Text>
-              <Text style={s.ctrlCount}> · 共 {chapters.length} 集</Text>
-            </Marquee>
+            <View style={s.ctrlTitleWrap}>
+              <Text style={[s.ctrlTitle, { flexShrink: 1 }]} numberOfLines={1}>
+                {titleAnime.name}
+              </Text>
+              <Text style={s.ctrlCount} numberOfLines={1}>
+                {' '}
+                · 共 {chapters.length} 集
+              </Text>
+            </View>
           )}
           {srcSelectorBtn}
           {resolving && <ActivityIndicator color={C.cyan} style={{ marginLeft: 4 }} />}
@@ -2851,6 +2815,7 @@ const s = StyleSheet.create({
   iconBtn: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 9, borderWidth: 1, borderColor: C.line2, backgroundColor: C.bg },
   iconBtnText: { color: C.muted, fontSize: 15, fontWeight: '800' },
   portCtrlRow: { flexDirection: 'row', alignItems: 'center', height: 34, gap: 8, paddingHorizontal: 10, marginVertical: 6 },
+  ctrlTitleWrap: { flex: 1, flexDirection: 'row', alignItems: 'baseline', overflow: 'hidden' },
   ctrlTitle: { color: C.text, fontSize: 15, fontWeight: '800' },
   ctrlCount: { color: C.muted, fontSize: 12, fontWeight: '600' },
 
