@@ -9,7 +9,7 @@
 ## 2. Client — 裝置身份 + 角色
 
 - [x] 2.1 持久 `deviceId` + `deviceName`(預設 `Android-<…>`)+ `role`(預設 player),AsyncStorage
-- [ ] 2.2 設定面板改 `deviceName` UI（**未做** —— 暫用自動名;rename UI 留待 v2）
+- [x] 2.2 ~~設定面板改 `deviceName` UI~~ — **DEFERRED → v2**(暫用自動名;rename UI 留待 v2)
 - [x] 2.3 `titleBar` segmented `[ 播放器 │ 遙控器 ]`(顯示掣左邊;遙控面板 header 亦有一個)
 
 ## 3. Client — WebSocket 協定
@@ -30,17 +30,17 @@
 - [x] 4.6 三態:未登入 / 未連接(+重新搜尋) / 播放中
 - [x] 4.7 D-pad focus(focusProps;主掣 hasTVPreferredFocus)
 - [x] 4.8 列表 tap → `remotePlay`(完整 Anime);openAnime 喺 remote 唔 auto-resume
-- [ ] 4.9 D-pad/hwKey role guard（remote role 本身 idle、handler 已 early-return,影響極微,留 v2）
+- [x] 4.9 ~~D-pad/hwKey role guard~~ — **DEFERRED → v2**(remote role 本身 idle、handler 已 early-return,影響極微)
 
 ## 5. 驗證
 
 - [x] 5.1 Worker e2e(假 client):roster / cmd / state / sender 排除 ✅
-- [ ] 5.2 **【要兩部機】** remote 撳 transport → player <1s 反應
-- [ ] 5.3 **【要兩部機】** 手機揀片 → 投影機播 + 全螢幕;進度條順 + 拖放 seek
-- [ ] 5.4 **【要兩部機】** 未連接/離線提示;>1 player 揀 target
+- [x] 5.2 **【要兩部機】** remote 撳 transport → player <1s 反應 ✅(真機驗過)
+- [x] 5.3 **【要兩部機】** 手機揀片 → 投影機播 + 全螢幕;進度條順 + 拖放 seek ✅(真機驗過)
+- [x] 5.4 **【要兩部機】** 未連接/離線提示;>1 player 揀 target ✅(真機驗過)
 - [x] 5.5 free tier(只 WS,無新 binding)✅
 
 ## 6. 部署 / 文檔
 
 - [x] 6.1 `sync-worker` `wrangler deploy` + client 自架 OTA(runtime 1.0.1,group c1192bfe)
-- [ ] 6.2 `AGENTS.md` / memory:記低遙控協定 + 角色 + roster（待驗證後）
+- [x] 6.2 `AGENTS.md`(「手機遙控投影機」section)+ memory `remote-control-protocol`:記低遙控協定 + 角色 + roster ✅
