@@ -1409,32 +1409,6 @@ export default function App() {
     />
   );
 
-  // 我的最愛篩選掣（打直版同搜尋格並排）
-  const favFilterBtn = (
-    <Pressable
-      {...focusProps('fav-filter')}
-      style={[s.favFilter, tab === 'fav' && s.favFilterOn, focused('fav-filter')]}
-      onPress={() => setTab((t) => (t === 'fav' ? 'all' : 'fav'))}>
-      <Text style={[s.favFilterText, tab === 'fav' && s.favFilterTextOn]}>
-        ♥ {favorites.length || ''}
-      </Text>
-    </Pressable>
-  );
-
-  // 打直版：搜尋 + 收藏 同一行
-  const searchFavRow = (
-    <View style={s.searchFavRow}>
-      <TextInput
-        style={[s.search, s.searchFlex]}
-        placeholder="🔍  搜尋動畫…"
-        placeholderTextColor={C.muted}
-        value={query}
-        onChangeText={setQuery}
-      />
-      {favFilterBtn}
-    </View>
-  );
-
   const renderAnimeRow = (item: Anime) => {
     const k = favKey(item);
     const fav = favSet.has(k);
@@ -1505,15 +1479,31 @@ export default function App() {
           ♥ 我的最愛 {favorites.length || ''}
         </Text>
       </Pressable>
-      <Pressable
-        {...focusProps('now-fav')}
-        hitSlop={6}
-        style={[s.collectBtn, titleAnime && favSet.has(favKey(titleAnime)) && s.collectBtnOn, focused('now-fav')]}
-        onPress={() => titleAnime && toggleFav(titleAnime)}>
-        <Text style={[s.collectText, titleAnime && favSet.has(favKey(titleAnime)) && s.collectTextOn]}>
-          {titleAnime && favSet.has(favKey(titleAnime)) ? '♥ 已收藏' : '♡ 收藏'}
-        </Text>
-      </Pressable>
+    </View>
+  );
+
+  // 打直版：搜尋 + 收藏（收藏目前揀緊嗰套）同一行
+  const collectBtn = titleAnime && (
+    <Pressable
+      {...focusProps('now-fav')}
+      hitSlop={6}
+      style={[s.collectBtn, favSet.has(favKey(titleAnime)) && s.collectBtnOn, focused('now-fav')]}
+      onPress={() => toggleFav(titleAnime)}>
+      <Text style={[s.collectText, favSet.has(favKey(titleAnime)) && s.collectTextOn]}>
+        {favSet.has(favKey(titleAnime)) ? '♥ 已收藏' : '♡ 收藏'}
+      </Text>
+    </Pressable>
+  );
+  const searchFavRow = (
+    <View style={s.searchFavRow}>
+      <TextInput
+        style={[s.search, s.searchFlex]}
+        placeholder="🔍  搜尋動畫…"
+        placeholderTextColor={C.muted}
+        value={query}
+        onChangeText={setQuery}
+      />
+      {collectBtn}
     </View>
   );
 
@@ -1561,6 +1551,13 @@ export default function App() {
         );
       })}
     </View>
+  );
+
+  // 打直版：集格最多 3 行，多過就喺格仔區內部捲（唔撐長成個 page）
+  const epGridPort = (
+    <ScrollView style={s.epScrollPort} nestedScrollEnabled showsVerticalScrollIndicator>
+      {epGridInner}
+    </ScrollView>
   );
 
   // ===== 可組合嘅控制零件（打橫上下排，打直就兩兩並排）=====
@@ -1993,17 +1990,17 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View>
-            {searchFavRow}
             {selected && (
               <>
+                {fsRow}
                 {srcAutoRow}
                 {pickerHeader}
                 {rangeTabs}
-                {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridInner}
-                {fsRow}
-                <View style={s.divider} />
+                {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridPort}
               </>
             )}
+            {searchFavRow}
+            {selected && <View style={s.divider} />}
           </View>
         }
         renderSectionHeader={({ section }) => sectionHeader(section.title, section.data.length)}
@@ -2163,6 +2160,7 @@ const s = StyleSheet.create({
   rangeText: { color: C.muted, fontSize: 12, fontWeight: '800' },
   rangeTextOn: { color: '#fff' },
   epScroll: { flex: 1 },
+  epScrollPort: { maxHeight: 110, marginBottom: 4 }, // 3 行（30×3 + 6×2 + 8 padding）封頂，多過內部捲
   epWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 8 },
   ep: { height: 30, borderRadius: 8, backgroundColor: C.raised, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   epOn: { backgroundColor: C.rose, borderColor: C.rose },

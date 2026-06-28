@@ -30,7 +30,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 打直版介面執位:搜尋 + 收藏放埋一行\n• 片源 + 自動最佳片源並排;全螢幕掣 + 播放即全螢幕並排,慳直度"
+      "releaseNotes": "• 打直版執位:收藏掣搬去搜尋行;標題列唔再爆兩行\n• 全螢幕行同搜尋行對調;集格最多 3 行,多過喺格內捲"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
