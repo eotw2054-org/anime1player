@@ -1,0 +1,10 @@
+name = "anime1-ota"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+account_id = "1a8d6d8aeba5b94cc79303d59fd10328"
+
+# 自架 expo-updates manifest endpoint。bundle/assets 存喺 GitHub,呢個 var 係 raw base。
+# 發佈流程會 commit precomputed manifest 落 ota-dist branch:
+#   <GITHUB_RAW_BASE>/updates/<channel>/<platform>/<runtimeVersion>/manifest.json
+[vars]
+GITHUB_RAW_BASE = "https://raw.githubusercontent.com/eotw2054-org/anime1player/ota-dist"
