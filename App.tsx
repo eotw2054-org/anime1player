@@ -752,14 +752,31 @@ export default function App() {
 
   async function openAnime(a: Anime) {
     setSelected(a);
-    // 續看：若有記錄，自動載入上次嗰集並 seek 返（遙控器模式唔本機播）
     const prog = progressRef.current[favKey(a)];
-    if (prog?.url && roleRef.current !== 'remote') {
-      resumeAtRef.current = prog.time || 0;
-      playEpisode(prog.url, a);
+    // 揀套戲就跟住切換播放（拆走舊有「有紀錄 + 唔係遙控」兩個 gate）。
+    // 有紀錄：eager 續看（唔等 chapter fetch）；遙控器叫投影機切。
+    if (prog?.url) {
+      if (roleRef.current === 'remote') {
+        remotePlay(prog.url, a);
+      } else {
+        resumeAtRef.current = prog.time || 0;
+        playEpisode(prog.url, a);
+      }
     }
+    // 冇紀錄：播 source 俾嘅第一個 url（唔保證係「真‧第 1 集」）。有紀錄已 eager 播咗就唔做。
+    const playFirst = (url?: string) => {
+      if (!url || prog?.url) return;
+      if (roleRef.current === 'remote') {
+        remotePlay(url, a);
+      } else {
+        resumeAtRef.current = null;
+        playEpisode(url, a);
+      }
+    };
     if (a.num && a.num > 0 && a.num <= 2000) {
-      setChapters(buildChapters(a.site, a.slug, a.num));
+      const chapters = buildChapters(a.site, a.slug, a.num);
+      setChapters(chapters);
+      playFirst(chapters[0]?.url);
       return;
     }
     setLoadingChapters(true);
@@ -776,9 +793,12 @@ export default function App() {
           out.push({ ep: out.length + 1, url: a.site + m[1] });
         }
       }
-      setChapters(out.length ? out : [{ ep: 1, url: a.latestUrl }]);
+      const chapters = out.length ? out : [{ ep: 1, url: a.latestUrl }];
+      setChapters(chapters);
+      playFirst(chapters[0]?.url);
     } catch {
       setChapters([{ ep: 1, url: a.latestUrl }]);
+      playFirst(a.latestUrl);
     } finally {
       setLoadingChapters(false);
     }
@@ -1266,7 +1286,11 @@ export default function App() {
   };
   // 遙控器：揀片 → 叫投影機播（唔喺手機播）
   const remotePlay = (url: string, anime: Anime) => {
-    wsSend({ type: 'cmd', targetId, action: 'playEpisode', value: { url, anime } });
+    // 讀 targetIdRef.current（唔讀 closure targetId）；未鎖定 target 就 no-op，
+    // 否則 null targetId 會被所有 player 一齊執行。
+    const tid = targetIdRef.current;
+    if (tid == null) return;
+    wsSend({ type: 'cmd', targetId: tid, action: 'playEpisode', value: { url, anime } });
   };
 
   // roleRef / allowRemoteRef 同步 + 變更即時 re-send hello（唔 reconnect）
