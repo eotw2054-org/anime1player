@@ -454,6 +454,7 @@ export default function App() {
   const lastStateSentRef = useRef(0);
   const nameInputRef = useRef<any>(null); // 自定義名稱輸入框（撳 OK 先 focus 開鍵盤）
   const [syncOpen, setSyncOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false); // ⚙ 設定（自動最佳片源 / 播放即全螢幕）
   const [syncName, setSyncName] = useState('');
   const [syncPass, setSyncPass] = useState('');
   const [syncBusy, setSyncBusy] = useState(false);
@@ -1923,22 +1924,6 @@ export default function App() {
     </View>
   );
 
-  // 打直版：片源 + 自動最佳 一行；全螢幕掣 + 播放即全螢幕 一行
-  const srcAutoRow = current && (
-    <View style={s.pairRow}>
-      {srcSelectorBtn}
-      {resolving && <ActivityIndicator color={C.cyan} />}
-      {autoBestToggle}
-    </View>
-  );
-
-  const fsRow = current && (
-    <View style={s.pairRow}>
-      {fsEnterBtn({ flex: 1 })}
-      {fsOnPlayToggle}
-    </View>
-  );
-
   // 選集區（標題 + 分段 + 格）
   const pickerHeader = (
     <View style={s.pickerHead}>
@@ -2316,6 +2301,24 @@ export default function App() {
     </Pressable>
   );
 
+  const settingsModal = settingsOpen && (
+    <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSettingsOpen(false)}>
+      <Pressable focusable={false} style={s.syncCard} onPress={() => {}}>
+        <Text style={s.syncTitle}>⚙ 設定</Text>
+        <Text style={s.syncSub}>播放偏好</Text>
+        {autoBestToggle}
+        {fsOnPlayToggle}
+        <Pressable
+          {...focusProps('settings-close')}
+          hasTVPreferredFocus
+          style={[s.syncBtn, focused('settings-close')]}
+          onPress={() => setSettingsOpen(false)}>
+          <Text style={s.syncBtnText}>完成</Text>
+        </Pressable>
+      </Pressable>
+    </Pressable>
+  );
+
   const updateModal = updateReady && (
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setUpdateReady(false)}>
       <Pressable focusable={false} style={s.syncCard} onPress={() => {}}>
@@ -2415,6 +2418,7 @@ export default function App() {
         {siteMenu}
         {sourceMenu}
         {syncModal}
+        {settingsModal}
         {updateModal}
       </View>
     );
@@ -2432,8 +2436,18 @@ export default function App() {
             onPress={() => setSiteOpen((v) => !v)}>
             <Text style={s.glyphText}>A1</Text>
           </Pressable>
-          {SiteBox}
+          <Text style={s.brandWord} numberOfLines={1}>
+            Anime1Player
+          </Text>
           <View style={{ flex: 1 }} />
+          {roleToggle}
+          <View style={{ flex: 1 }} />
+          <Pressable
+            {...focusProps('settings')}
+            style={[s.iconBtn, focused('settings')]}
+            onPress={() => setSettingsOpen(true)}>
+            <Text style={s.iconBtnText}>⚙</Text>
+          </Pressable>
           <Pressable
             {...focusProps('sync')}
             style={[s.cloudBtn, syncUser && s.cloudBtnOn, focused('sync')]}
@@ -2449,15 +2463,37 @@ export default function App() {
       )}
 
       {!fullscreen && (role === 'remote' ? remotePanel : playerBlock)}
-      {!fullscreen && titleBar}
+      {/* 控制行：分流條（窄）· 收起 同一行（角色 toggle 已搬上頂 bar）*/}
+      {!fullscreen && selected && (
+        <View style={s.portCtrlRow}>
+          {srcSelectorBtn}
+          {resolving && <ActivityIndicator color={C.cyan} style={{ marginLeft: 4 }} />}
+          <View style={{ flex: 1 }} />
+          <Pressable
+            {...focusProps('panel-toggle')}
+            style={[s.panelToggle, focused('panel-toggle')]}
+            onPress={() => {
+              const v = !panelOpen;
+              setPanelOpen(v);
+              AsyncStorage.setItem('panelOpen', v ? '1' : '0');
+            }}>
+            <Text style={s.panelToggleText}>{panelOpen ? '▴ 收起' : '▾ 顯示'}</Text>
+          </Pressable>
+        </View>
+      )}
       {playError && !fullscreen && <Text style={s.err}>{playError}</Text>}
 
-      {/* 固定控制區：揀咗動畫時鎖喺頂，唔跟清單向上捲；可用標題列「收起 / 控制」手動收合 */}
+      {/* 固定控制區：揀咗動畫時鎖喺頂，唔跟清單向上捲；可用「收起 / 顯示」手動收合 */}
       {selected && panelOpen && (
         <View style={s.lockedControls}>
-          {fsRow}
-          {srcAutoRow}
-          {pickerHeader}
+          {titleAnime && (
+            <View style={s.pickerHead}>
+              <Text style={[s.pickerTitle, { flexShrink: 1 }]} numberOfLines={1}>
+                {titleAnime.name}
+              </Text>
+              <Text style={s.pickerCount}> · 共 {chapters.length} 集</Text>
+            </View>
+          )}
           {rangeTabs}
           {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridPort}
         </View>
@@ -2482,6 +2518,7 @@ export default function App() {
       {siteMenu}
       {sourceMenu}
       {syncModal}
+      {settingsModal}
       {updateModal}
     </View>
   );
@@ -2646,7 +2683,7 @@ const s = StyleSheet.create({
   searchFlex: { flex: 1, marginBottom: 0 },
   pairRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   srcBar: {
-    flex: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -2772,6 +2809,10 @@ const s = StyleSheet.create({
 
   // ===== Portrait =====
   appbar: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 12, paddingVertical: 8 },
+  brandWord: { color: C.text, fontSize: 16, fontWeight: '900', letterSpacing: 0.3, flexShrink: 1 },
+  iconBtn: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 9, borderWidth: 1, borderColor: C.line2, backgroundColor: C.bg },
+  iconBtnText: { color: C.muted, fontSize: 15, fontWeight: '800' },
+  portCtrlRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 6 },
 
   // ===== PlayerOverlay =====
   tapCatcher: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
