@@ -646,7 +646,7 @@ export default function App() {
         : [{ ...a }, ...prev];
       AsyncStorage.setItem('favorites', JSON.stringify(next));
       favoritesRef.current = next;
-      scheduleSyncPush();
+      pushNow();
       return next;
     });
   }
@@ -936,19 +936,25 @@ export default function App() {
     } catch {}
   };
 
-  // 雲端同步：debounce 推上去（登入咗先做）
+  // 雲端同步：即時推上去（清走未發嘅 debounce）—— 用喺離散、重要嘅改動（最愛、開始/結束）
+  const pushNow = () => {
+    if (pushTimer.current) {
+      clearTimeout(pushTimer.current);
+      pushTimer.current = null;
+    }
+    const token = syncTokenRef.current;
+    if (!token) return;
+    syncPush(token, {
+      favorites: favoritesRef.current,
+      progress: progressRef.current,
+      marks: marksRef.current,
+    }).catch(() => {});
+  };
+  // 雲端同步：debounce 推上去（登入咗先做）—— 用喺頻繁嘅改動（播放進度）
   const scheduleSyncPush = () => {
     if (!syncTokenRef.current) return;
     if (pushTimer.current) clearTimeout(pushTimer.current);
-    pushTimer.current = setTimeout(() => {
-      const token = syncTokenRef.current;
-      if (!token) return;
-      syncPush(token, {
-        favorites: favoritesRef.current,
-        progress: progressRef.current,
-        marks: marksRef.current,
-      }).catch(() => {});
-    }, 2500);
+    pushTimer.current = setTimeout(pushNow, 2500);
   };
 
   // 登入 / 註冊：攞 token → pull → 合併 → 套用 → push 返
@@ -1022,6 +1028,7 @@ export default function App() {
     }, 60000);
     const sub = AppState.addEventListener('change', (st) => {
       if (st === 'active') pullMerge();
+      else if (st === 'background' || st === 'inactive') pushNow(); // 退背景前 flush 未發嘅進度
     });
     return () => {
       clearInterval(id);
@@ -1065,7 +1072,7 @@ export default function App() {
     marksRef.current = next;
     setMarks(next);
     AsyncStorage.setItem('marks', JSON.stringify(next));
-    scheduleSyncPush();
+    pushNow();
   };
   const setMarkField = (field: 'start' | 'end') => {
     const c = currentRef.current;
