@@ -1,0 +1,37 @@
+name: Publish OTA (self-hosted, Cloudflare KV)
+
+# 自架 OTA 發佈：expo export → 計 hash → 上載 bundle/assets/manifest 落 Cloudflare KV。
+# 唔用 EAS、唔寫 GitHub repo（淨係讀 + 上 KV，所以唔需要 contents:write）。
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [master]
+    paths:
+      - 'App.tsx'
+      - 'index.ts'
+      - 'lib/**'
+      - 'app.json'
+      - 'scripts/publish-ota.mjs'
+      - 'package.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-ota
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Publish OTA to Cloudflare KV
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/publish-ota.mjs

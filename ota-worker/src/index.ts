@@ -44,18 +44,22 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // 派 bundle / asset（manifest 入面啲 url 指返呢度）
+    // 派 bundle / asset（manifest 入面啲 url 指返呢度）。content-type 由 key 副檔名推斷。
     if (url.pathname.startsWith('/assets/')) {
       const key = decodeURIComponent(url.pathname.slice('/assets/'.length));
-      const { value, metadata } = await env.OTA.getWithMetadata<{ contentType?: string }>(
-        `asset:${key}`,
-        { type: 'arrayBuffer' }
-      );
+      const value = await env.OTA.get(`asset:${key}`, { type: 'arrayBuffer' });
       if (!value) return new Response('not found', { status: 404 });
+      const ext = key.split('.').pop()?.toLowerCase() ?? '';
+      const types: Record<string, string> = {
+        js: 'application/javascript', hbc: 'application/javascript',
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+        webp: 'image/webp', svg: 'image/svg+xml', json: 'application/json',
+        ttf: 'font/ttf', otf: 'font/otf', woff: 'font/woff', woff2: 'font/woff2',
+      };
       return new Response(value, {
         status: 200,
         headers: {
-          'content-type': metadata?.contentType ?? 'application/octet-stream',
+          'content-type': types[ext] ?? 'application/octet-stream',
           'cache-control': 'public, max-age=31536000, immutable',
         },
       });
