@@ -21,11 +21,16 @@ A device in 遙控器 role SHALL send playback commands over the SyncHub WebSock
 
 #### Scenario: Browse on phone, play on projector
 - **WHEN** in remote role the user taps an anime/episode in the list
-- **THEN** a playEpisode command (url + anime) is sent to the target player, which opens that episode and goes fullscreen — and the phone does NOT play it locally
+- **THEN** a playEpisode command carrying a FULL Anime payload (`{site, slug, title, num?, latestUrl?, cover?}` + the episode `url`) is sent to the target player, which opens that episode (via `remotePlay`) and goes fullscreen — and the phone does NOT play it locally
+- **AND** the payload contains every field `favKey()` and `resolveSource`/`parseEpisode` need on the player
 
 #### Scenario: Remote does not control itself
 - **WHEN** the remote sends a command
-- **THEN** the relay delivers it only to other devices, so the sending device never executes its own command
+- **THEN** every relayed message carries `from:deviceId`; the DO excludes the sender by deviceId (NOT by WebSocket object identity, which is not stable across hibernation) and the client also ignores any message whose `from` equals its own deviceId
+
+#### Scenario: Both devices logged in required
+- **WHEN** a device is not logged in to cloud sync
+- **THEN** the remote panel shows a "請先登入" state distinct from "未連接到播放器" (the WebSocket only runs when logged in)
 
 ### Requirement: Now-playing + interpolated progress on the remote
 The player SHALL broadcast its now-playing state on playback events and on a ~3s heartbeat; the remote SHALL show title/episode and a progress bar that advances smoothly via local interpolation.
@@ -33,11 +38,19 @@ The player SHALL broadcast its now-playing state on playback events and on a ~3s
 #### Scenario: Smooth progress without flooding
 - **WHEN** the player is playing
 - **THEN** it broadcasts position roughly every 3s (plus on play/pause/seek/episode-change)
-- **AND** the remote interpolates locally so the bar moves each ~0.5s without a message per tick
+- **AND** the remote interpolates locally from its OWN receipt time (`recvAt = Date.now()` on the remote, NOT the player's `at`, to avoid cross-device clock skew), clamped to duration, so the bar moves each ~0.5s without a message per tick
+
+#### Scenario: Stale connection freezes the bar
+- **WHEN** no state arrives for more than ~2× the heartbeat (~6s)
+- **THEN** the remote freezes interpolation and shows a「連線中斷 / 重新搜尋」state instead of advancing a fake position
 
 #### Scenario: Drag to seek
 - **WHEN** the user drags the remote's progress bar and releases
-- **THEN** one seekTo command is sent; the bar optimistically jumps and reconciles on the next state update
+- **THEN** one seekTo command is sent; the bar optimistically jumps and SUPPRESSES incoming state for ~1.5s (or until a state whose position is within tolerance of the target arrives) so the pre-seek heartbeat does not snap it back
+
+#### Scenario: Prev/next disabled at ends
+- **WHEN** the player has no previous/next episode
+- **THEN** the `state` carries hasPrev/hasNext and the remote disables ⏮/⏭ accordingly (no dead buttons)
 
 ### Requirement: Target selection among multiple players
 When more than one player is connected, the remote SHALL let the user pick which player to control; with exactly one player it SHALL auto-select it.
