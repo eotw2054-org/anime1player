@@ -1683,7 +1683,7 @@ export default function App() {
         </View>
       )}
       <View style={{ flex: 1 }} />
-      {role === 'player' && roleToggle}
+      {roleToggle}
       {!isLandscape && selected && (
         <Pressable
           {...focusProps('panel-toggle')}
@@ -1951,10 +1951,10 @@ export default function App() {
       return `${m}:${String(s % 60).padStart(2, '0')}`;
     };
     return (
-      <View style={[s.playerArea, !isLandscape && s.playerAreaPortrait, s.remotePanel]}>
+      <View style={s.remotePanel}>
         <View style={s.remoteHead}>
           <Text style={s.remoteTag}>🎮 遙控器</Text>
-          {roleToggle}
+          {!titleAnime && roleToggle}
         </View>
         {!syncUser ? (
           <View style={s.remoteCenter}>
@@ -2684,10 +2684,10 @@ const s = StyleSheet.create({
   roleSegOn: { backgroundColor: 'rgba(52,225,232,0.18)' },
   roleSegText: { color: C.muted, fontSize: 12, fontWeight: '800' },
   roleSegTextOn: { color: C.cyan },
-  remotePanel: { backgroundColor: C.surface, padding: 14, gap: 8, justifyContent: 'flex-start' },
+  remotePanel: { backgroundColor: C.surface, borderRadius: 18, marginHorizontal: 10, marginTop: 8, padding: 14, gap: 8 },
   remoteHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   remoteTag: { color: C.text, fontSize: 14, fontWeight: '900' },
-  remoteCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 20 },
+  remoteCenter: { alignItems: 'center', gap: 10, paddingVertical: 28 },
   remoteHint: { color: C.text, fontSize: 15, fontWeight: '800' },
   remoteSub: { color: C.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
   rcTarget: { alignSelf: 'flex-start', backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
