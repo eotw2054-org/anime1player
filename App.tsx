@@ -9,6 +9,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  StatusBar as RNStatusBar,
   SectionList,
   StyleSheet,
   Text,
@@ -331,6 +332,9 @@ function PlayerOverlay(props: {
 export default function App() {
   const { width, height } = useWindowDimensions();
   const isLandscape = width >= height;
+  // Android edge-to-edge：app 畫面會畫到狀態列底下，要用真實狀態列高度做 paddingTop，
+  // 唔可以寫死（之前 22 喺有 notch / 高狀態列嘅機唔夠，頂部按鈕同系統列重疊好難撳）
+  const topInset = Platform.OS === 'android' ? RNStatusBar.currentHeight ?? 24 : 0;
 
   const [siteKey, setSiteKey] = useState<SiteKey>('in');
   const [lists, setLists] = useState<Record<string, Anime[]>>({}); // 每個站台一份清單（合併顯示）
@@ -1908,7 +1912,7 @@ export default function App() {
   // ========= LANDSCAPE =========
   if (isLandscape) {
     return (
-      <View ref={rootRef} style={s.root}>
+      <View ref={rootRef} style={[s.root, { paddingTop: topInset }]}>
         <StatusBar style="light" hidden={fullscreen} />
 
         {/* 側欄 */}
@@ -1983,7 +1987,7 @@ export default function App() {
 
   // ========= PORTRAIT =========
   return (
-    <View ref={rootRef} style={s.rootPort}>
+    <View ref={rootRef} style={[s.rootPort, { paddingTop: topInset }]}>
       <StatusBar style="light" hidden={fullscreen} />
       {!fullscreen && (
         <View style={s.appbar}>
@@ -2051,8 +2055,8 @@ export default function App() {
 const GLOW = C.rose;
 
 const s = StyleSheet.create({
-  root: { flex: 1, flexDirection: 'row', backgroundColor: C.bg, paddingTop: 22 },
-  rootPort: { flex: 1, backgroundColor: C.bg, paddingTop: 22 },
+  root: { flex: 1, flexDirection: 'row', backgroundColor: C.bg },
+  rootPort: { flex: 1, backgroundColor: C.bg },
 
   focused: { borderColor: C.cyan, borderWidth: 2 },
   rowFocused: { backgroundColor: 'rgba(52,225,232,0.08)' },
