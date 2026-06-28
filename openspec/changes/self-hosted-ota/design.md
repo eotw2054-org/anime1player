@@ -10,29 +10,30 @@
 | GitHub repo | `eotw2054-org/anime1player`(master 已 sync) |
 | EAS(保留 backup) | project `@eotw2054s-team/rn-app` id `313eb4ec-…`,`u.expo.dev` URL |
 | runtimeVersion | 靜態 `"1.0.0"` |
-| R2 / KV | **唔用**(R2 要卡;storage 放 GitHub) |
+| KV namespace | `OTA`,id `f5444f7783374419abf63bca3296b54b`(存 bundle/assets/manifest) |
+| R2 | 唔用(要卡) |
+| GitHub 寫入 | 被 org 政策封(read-write token + deploy key 都 disabled)→ 改用 KV |
 
 ## 架構
 
 ```
 ┌── 發佈 (GitHub Action: push master 或 workflow_dispatch) ──┐
 │  npx expo export -p android  → dist/                       │
-│  Node script: 每個檔計 base64url(sha256),砌                │
-│     updates/production/android/<runtimeVersion>/manifest.json │
-│     (launchAsset + assets,url 指去 raw.githubusercontent)  │
-│  commit dist/ + manifest 落 repo(branch: ota-dist)        │
+│  Node: 每個檔計 base64url(sha256),砌 manifest             │
+│     (launchAsset + assets,url 指去 worker /assets/<key>)  │
+│  wrangler kv key put（用 CLOUDFLARE_API_TOKEN）:           │
+│     asset:<key>  → binary（metadata.contentType）          │
+│     manifest:production:android:<rt> → manifest JSON       │
+│  ※ 唔寫 GitHub repo（避開 org 政策）                       │
 └────────────────────────────────────────────────────────────┘
-                          │ raw.githubusercontent.com/eotw2054-org/anime1player/ota-dist/...
-                          ▼
-┌── 派 (Cloudflare Worker `ota-worker`, stateless) ──────────┐
-│  GET /  headers: expo-platform, expo-runtime-version,       │
-│         expo-channel-name, expo-protocol-version:1          │
-│  → fetch precomputed manifest.json from GitHub raw          │
-│  → 若 runtime 唔 match → 204 No Update Available            │
-│  → 包成 multipart/mixed (part name="manifest") 回           │
+                          ▼ Cloudflare KV (namespace OTA)
+┌── 派 (Cloudflare Worker `anime1-ota`) ─────────────────────┐
+│  GET /  headers: expo-platform / runtime / channel         │
+│    → KV.get(manifest:…) → 包 multipart/mixed 回;冇 → 204   │
+│  GET /assets/<key>  → KV.get(asset:…) → 派 binary           │
 └────────────────────────────────────────────────────────────┘
                           ▼
-            expo-updates (APK), updates.url = ota-worker
+            expo-updates (APK), updates.url = anime1-ota.workers.dev
 ```
 
 ## Expo Updates protocol v1（worker 要回嘅嘢）

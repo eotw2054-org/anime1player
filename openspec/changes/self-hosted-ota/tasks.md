@@ -1,20 +1,21 @@
 ## 1. Cloudflare 準備(已完成)
 
-- [x] 1.1 確認可用服務:Workers(免費);R2 要卡 → 用 GitHub 存
-- [x] 1.2 建立 + 驗證 CF API token(wrangler deploy 用;scratchpad,未入 repo)
+- [x] 1.1 確認可用服務:Workers + KV(免費);R2 要卡 → 棄。GitHub 寫入被 org 政策封 → storage 改用 **KV**
+- [x] 1.2 建立 + 驗證 CF API token(wrangler deploy 用;scratchpad + GitHub secret `CLOUDFLARE_API_TOKEN`)
 - [x] 1.3 Account ID `1a8d6d8aeba5b94cc79303d59fd10328`
+- [x] 1.4 建立 KV namespace `OTA`(id `f5444f7783374419abf63bca3296b54b`)
 
 ## 2. OTA Worker(manifest endpoint)
 
-- [x] 2.1 起 `ota-worker/`:`wrangler.toml`(name `anime1-ota`、account_id、var `GITHUB_RAW_BASE`)
-- [x] 2.2 `src/index.ts`:讀 headers(platform/runtime/channel)→ fetch GitHub raw precomputed manifest → 包 `multipart/mixed`(part `manifest`)回;唔 match → 204
-- [x] 2.3 live 測試:health 200、expo 請求回 204(取代本機 wrangler dev)
-- [x] 2.4 deploy → resource 建立,URL **`https://anime1-ota.eotw2054.workers.dev`**
+- [x] 2.1 `ota-worker/`:`wrangler.toml`(name `anime1-ota`、account_id、KV binding `OTA`)
+- [x] 2.2 `src/index.ts`:manifest 由 KV(`manifest:<ch>:<plat>:<rt>`)→ multipart;`/assets/<key>` 由 KV 派 binary;唔 match → 204
+- [x] 2.3 live 測試:health 200、204、**KV roundtrip**(put manifest → 回 multipart 200)✅
+- [x] 2.4 deploy(KV binding)→ URL **`https://anime1-ota.eotw2054.workers.dev`**
 
 ## 3. 發佈 pipeline
 
-- [ ] 3.1 `scripts/publish-ota.mjs`:`expo export -p android` → 每檔 `base64url(sha256)` → 砌 manifest(url 指 GitHub raw)→ 寫 `dist/` + `updates/production/android/1.0.0/manifest.json`
-- [ ] 3.2 `.github/workflows/ota.yml`:push master / workflow_dispatch → run script → commit 落 `ota-dist` branch(用內建 `GITHUB_TOKEN`)
+- [ ] 3.1 `scripts/publish-ota.mjs`:`expo export -p android` → 每檔 `base64url(sha256)` → 砌 manifest(url 指 worker `/assets/<key>`)→ `wrangler kv key put` 上載 bundle/assets(metadata.contentType)+ `manifest:production:android:1.0.0` 落 KV
+- [ ] 3.2 `.github/workflows/ota.yml`:push master / workflow_dispatch → run script(用 `CLOUDFLARE_API_TOKEN` secret)→ 上 KV;**唔寫 GitHub repo**(避開 org 政策)
 - [ ] 3.3 確認 manifest `extra.expoClient.extra.releaseNotes` 由 app.json 帶入
 
 ## 4. App 接駁(可逆 cutover)

@@ -12,20 +12,24 @@ The app SHALL be able to fetch OTA updates from a self-hosted Cloudflare Worker 
 - **WHEN** no published update matches the requested runtime version / channel
 - **THEN** the worker returns `204 No Update Available`
 
-### Requirement: GitHub-hosted bundle and assets
-Update bundles and assets SHALL be stored in the GitHub repository (served via raw URLs); Cloudflare SHALL be used only for the stateless manifest Worker (no R2/KV).
+### Requirement: KV-hosted bundle and assets
+Update bundles, assets, and manifests SHALL be stored in Cloudflare KV (free tier, no R2 subscription); the Worker serves them. No write access to the GitHub repository is required (org policy blocks CI writes).
 
 #### Scenario: Asset fetch
 - **WHEN** the app downloads the launch bundle or an asset referenced in the manifest
-- **THEN** it is served from `raw.githubusercontent.com/eotw2054-org/anime1player/...`
+- **THEN** it is served by the Worker from KV via `https://anime1-ota.eotw2054.workers.dev/assets/<key>`
+
+#### Scenario: Publish without GitHub write
+- **WHEN** the publish pipeline uploads an update
+- **THEN** it writes bundle/assets/manifest to KV using `CLOUDFLARE_API_TOKEN` and does NOT push to the GitHub repository
 
 ### Requirement: Publish pipeline via GitHub Actions
 A GitHub Actions workflow SHALL build the JS bundle and publish it without using EAS.
 
 #### Scenario: Publish an update
 - **WHEN** the publish workflow runs (push to master or manual dispatch)
-- **THEN** it runs `expo export -p android`, computes `base64url(sha256)` for each file, writes a ready-to-serve manifest, and commits `dist/` + manifest to the repo
-- **AND** no Expo account / `eas update` is required
+- **THEN** it runs `expo export -p android`, computes `base64url(sha256)` for each file, builds a manifest, and uploads bundle/assets/manifest to Cloudflare KV via wrangler
+- **AND** no Expo account / `eas update` is required, and no GitHub repo write is required
 
 ### Requirement: Release notes preserved in self-hosted manifest
 The self-hosted manifest SHALL include `extra.expoClient.extra.releaseNotes` so the in-app "更新內容" prompt keeps working.
