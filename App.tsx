@@ -1275,6 +1275,12 @@ export default function App() {
         case 'setEnd':
           setMarkField('end');
           break;
+        case 'clearStart':
+          clearMarkField('start');
+          break;
+        case 'clearEnd':
+          clearMarkField('end');
+          break;
         case 'playEpisode':
           if (m.value?.url) {
             playEpisode(m.value.url, m.value.anime);
@@ -2078,20 +2084,30 @@ export default function App() {
                 <Text style={[s.rcBtnIcon, !st?.hasNext && s.rcBtnOff]}>⏭</Text>
               </Pressable>
             </View>
-            {/* 設開始 / 🔒鎖定 / 設結束 */}
+            {/* 設開始 [✕] / 🔒鎖定 / [✕] 設結束 */}
             <View style={s.rcMarkRow}>
-              <Pressable {...focusProps('rc-setstart')} style={[s.rcMarkBtn, focused('rc-setstart')]} onPress={() => rcmd('setStart')}>
-                <Text style={s.rcMarkText}>⏱ 設開始</Text>
-              </Pressable>
+              <View style={s.rcMarkGroup}>
+                <Pressable {...focusProps('rc-setstart')} style={[s.rcMarkBtn, focused('rc-setstart')]} onPress={() => rcmd('setStart')}>
+                  <Text style={s.rcMarkText}>⏱ 設開始</Text>
+                </Pressable>
+                <Pressable {...focusProps('rc-clearstart')} style={[s.rcClearBtn, focused('rc-clearstart')]} onPress={() => rcmd('clearStart')}>
+                  <Text style={s.rcClearText}>✕</Text>
+                </Pressable>
+              </View>
               <Pressable
                 {...focusProps('rc-lock')}
                 style={[s.rcLockBtn, remoteLocked && s.rcLockOn, focused('rc-lock')]}
                 onPress={toggleRemoteLock}>
                 <Text style={[s.rcLockText, remoteLocked && s.rcLockTextOn]}>{remoteLocked ? '🔒' : '🔓'}</Text>
               </Pressable>
-              <Pressable {...focusProps('rc-setend')} style={[s.rcMarkBtn, focused('rc-setend')]} onPress={() => rcmd('setEnd')}>
-                <Text style={s.rcMarkText}>⏱ 設結束</Text>
-              </Pressable>
+              <View style={s.rcMarkGroup}>
+                <Pressable {...focusProps('rc-clearend')} style={[s.rcClearBtn, focused('rc-clearend')]} onPress={() => rcmd('clearEnd')}>
+                  <Text style={s.rcClearText}>✕</Text>
+                </Pressable>
+                <Pressable {...focusProps('rc-setend')} style={[s.rcMarkBtn, focused('rc-setend')]} onPress={() => rcmd('setEnd')}>
+                  <Text style={s.rcMarkText}>⏱ 設結束</Text>
+                </Pressable>
+              </View>
             </View>
             {remoteLocked && <Text style={s.rcLockHint}>🔒 已鎖定 · 唔會控制播放器（防誤觸）</Text>}
           </>
@@ -2878,8 +2894,11 @@ const s = StyleSheet.create({
   rcBtnIcon: { color: C.text, fontSize: 28 },
   rcBtnOff: { color: C.mutedDim },
   rcBtnSm: { color: C.text, fontSize: 15, fontWeight: '700' },
-  rcMarkRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  rcMarkRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  rcMarkGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rcMarkBtn: { backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  rcClearBtn: { backgroundColor: C.raised, borderRadius: 8, width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  rcClearText: { color: C.muted, fontSize: 14, fontWeight: '800' },
   rcMarkText: { color: C.text, fontSize: 13, fontWeight: '700' },
   rcLockBtn: { backgroundColor: C.raised, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
   rcLockOn: { backgroundColor: C.cyan },
