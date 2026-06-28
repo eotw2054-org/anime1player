@@ -1051,14 +1051,16 @@ export default function App() {
       try {
         const res = await Updates.checkForUpdateAsync();
         if (!res.isAvailable) return;
-        const fetched = await Updates.fetchUpdateAsync();
-        if (alive && fetched.isNew) {
-          // 「更新內容」放喺 app.json expo.extra.releaseNotes，會跟新版本個 manifest 派落嚟
-          const m: any = (fetched as any).manifest ?? (res as any).manifest;
-          const notes = m?.extra?.expoClient?.extra?.releaseNotes;
-          setUpdateNotes(typeof notes === 'string' && notes.trim() ? notes.trim() : null);
-          setUpdateReady(true);
-        }
+        // 確保 bundle 已下載（native CHECK_ON_LAUNCH=ALWAYS 可能已搶先下載，呢個 idempotent）
+        try {
+          await Updates.fetchUpdateAsync();
+        } catch {}
+        // 判斷彈唔彈用 isAvailable，唔好 gate 喺 fetched.isNew —— 否則 native 搶先下載令 isNew=false 就唔彈
+        const m: any = (res as any).manifest;
+        const notes = m?.extra?.expoClient?.extra?.releaseNotes;
+        if (!alive) return;
+        setUpdateNotes(typeof notes === 'string' && notes.trim() ? notes.trim() : null);
+        setUpdateReady(true);
       } catch {
         // 冇網 / server 錯 → 靜默，唔好阻住用 app
       }
@@ -1502,6 +1504,20 @@ export default function App() {
   const playerHost = isPlaying ? <View style={hostStyle}>{playerNode}</View> : null;
 
   // ========= 來源 / 站台 選單覆蓋 =========
+  // 版本 / OTA 資訊（撳 [A1] 開來源選單時喺底部顯示）
+  const otaInfo = (() => {
+    try {
+      const rv = Updates.runtimeVersion ?? '?';
+      const ch = Updates.channel ?? 'dev';
+      if (Updates.isEmbeddedLaunch) return `v${rv} · ${ch} · 內建版本（未 OTA）`;
+      const id = (Updates.updateId ?? '').slice(0, 8);
+      const dt = Updates.createdAt ? new Date(Updates.createdAt).toLocaleString() : '';
+      return `v${rv} · ${ch} · OTA ${id}${dt ? ' · ' + dt : ''}`;
+    } catch {
+      return `v${'1.0.0'} · dev`;
+    }
+  })();
+
   // 來源篩選選單（multi-select：揀用邊幾個主來源，預設全選）
   const siteMenu = siteOpen && (
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSiteOpen(false)}>
@@ -1521,6 +1537,7 @@ export default function App() {
             </Pressable>
           );
         })}
+        <Text style={s.spVer} selectable>{otaInfo}</Text>
       </Pressable>
     </Pressable>
   );
@@ -2015,6 +2032,7 @@ const s = StyleSheet.create({
   },
   srcMenu: { width: 248, maxHeight: '70%', backgroundColor: C.surface, borderWidth: 1, borderColor: C.line2, borderRadius: 13, padding: 8 },
   srcMenuTitle: { color: C.muted, fontSize: 11, fontWeight: '800', marginBottom: 6, paddingHorizontal: 4 },
+  spVer: { color: C.mutedDim, fontSize: 10, marginTop: 8, paddingHorizontal: 4, lineHeight: 14 },
   srcItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 8, marginBottom: 4, borderWidth: 2, borderColor: 'transparent' },
   srcItemOn: { backgroundColor: 'rgba(52,225,232,0.10)' },
   srcItemHi: { borderColor: C.cyan },
