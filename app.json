@@ -30,7 +30,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 手機:入全螢幕自動打橫,退出自動返打直\n• 打直版控制區鎖喺頂唔跟清單捲;集格最多 3 行多過內捲;收藏掣搬去搜尋行"
+      "releaseNotes": "• 打直版:標題列加「收起/控制」掣,可手動收埋成個控制區\n• 移除「繼續觀看 xx:xx」顯示(續看功能照舊)"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

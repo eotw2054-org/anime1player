@@ -374,6 +374,7 @@ export default function App() {
     autoBestRef.current = autoBest;
   });
   const [ctrlShown, setCtrlShown] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(true); // 打直版控制區手動收合
   const [srcOpen, setSrcOpen] = useState(false);
   const [siteOpen, setSiteOpen] = useState(false);
   const [preferredLabel, setPreferredLabel] = useState<string | null>(null);
@@ -557,7 +558,7 @@ export default function App() {
   // 載入設定 + 我的最愛
   useEffect(() => {
     (async () => {
-      const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken, ab] = await Promise.all([
+      const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken, ab, po] = await Promise.all([
         AsyncStorage.getItem('site'),
         AsyncStorage.getItem('marks'),
         AsyncStorage.getItem('favorites'),
@@ -569,6 +570,7 @@ export default function App() {
         AsyncStorage.getItem('syncUser'),
         AsyncStorage.getItem('syncToken'),
         AsyncStorage.getItem('autoBest'),
+        AsyncStorage.getItem('panelOpen'),
       ]);
       if (sUser && sToken) {
         setSyncUser(sUser);
@@ -595,6 +597,7 @@ export default function App() {
       }
       if (fop === '1') setFsOnPlay(true);
       if (ab === '1') setAutoBest(true);
+      if (po === '0') setPanelOpen(false);
       if (srcl) setPreferredLabel(srcl);
       if (prog) {
         try {
@@ -1480,12 +1483,19 @@ export default function App() {
           <Text style={s.tbEpText}>第 {current!.episodeNo} 集</Text>
         </View>
       )}
-      {playingThis && resumeAt > 1 && (
-        <View style={s.tbResume}>
-          <Text style={s.tbResumeText}>↺ 繼續觀看 {fmtTime(resumeAt)}</Text>
-        </View>
-      )}
       <View style={{ flex: 1 }} />
+      {!isLandscape && selected && (
+        <Pressable
+          {...focusProps('panel-toggle')}
+          style={[s.panelToggle, focused('panel-toggle')]}
+          onPress={() => {
+            const v = !panelOpen;
+            setPanelOpen(v);
+            AsyncStorage.setItem('panelOpen', v ? '1' : '0');
+          }}>
+          <Text style={s.panelToggleText}>{panelOpen ? '▴ 收起' : '▾ 控制'}</Text>
+        </Pressable>
+      )}
       <Pressable
         {...focusProps('fav-filter')}
         style={[s.favFilter, tab === 'fav' && s.favFilterOn, focused('fav-filter')]}
@@ -1995,8 +2005,8 @@ export default function App() {
       {!fullscreen && titleBar}
       {playError && !fullscreen && <Text style={s.err}>{playError}</Text>}
 
-      {/* 固定控制區：揀咗動畫時鎖喺頂，唔跟清單向上捲 */}
-      {selected && (
+      {/* 固定控制區：揀咗動畫時鎖喺頂，唔跟清單向上捲；可用標題列「收起 / 控制」手動收合 */}
+      {selected && panelOpen && (
         <View style={s.lockedControls}>
           {fsRow}
           {srcAutoRow}
@@ -2156,6 +2166,8 @@ const s = StyleSheet.create({
   },
   favFilterOn: { backgroundColor: 'rgba(255,77,141,0.16)', borderColor: C.rose },
   favFilterText: { color: C.muted, fontSize: 12, fontWeight: '700' },
+  panelToggle: { paddingHorizontal: 11, paddingVertical: 7, borderRadius: 10, borderWidth: 1, borderColor: C.line2, backgroundColor: C.bg },
+  panelToggleText: { color: C.cyan, fontSize: 12, fontWeight: '800' },
   favFilterTextOn: { color: C.rose },
   collectBtn: { borderRadius: 10, paddingHorizontal: 13, paddingVertical: 7, backgroundColor: C.raised },
   collectBtnOn: { backgroundColor: C.rose },
