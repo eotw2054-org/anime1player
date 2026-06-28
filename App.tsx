@@ -420,6 +420,7 @@ export default function App() {
   const [syncingNow, setSyncingNow] = useState(false);
   const [syncErr, setSyncErr] = useState<string | null>(null);
   const [updateReady, setUpdateReady] = useState(false); // OTA：已下載新版本，等用戶確認 reload
+  const [updateNotes, setUpdateNotes] = useState<string | null>(null); // OTA：新版本嘅「更新內容」
   const favoritesRef = useRef<Anime[]>([]);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1044,7 +1045,13 @@ export default function App() {
         const res = await Updates.checkForUpdateAsync();
         if (!res.isAvailable) return;
         const fetched = await Updates.fetchUpdateAsync();
-        if (alive && fetched.isNew) setUpdateReady(true);
+        if (alive && fetched.isNew) {
+          // 「更新內容」放喺 app.json expo.extra.releaseNotes，會跟新版本個 manifest 派落嚟
+          const m: any = (fetched as any).manifest ?? (res as any).manifest;
+          const notes = m?.extra?.expoClient?.extra?.releaseNotes;
+          setUpdateNotes(typeof notes === 'string' && notes.trim() ? notes.trim() : null);
+          setUpdateReady(true);
+        }
       } catch {
         // 冇網 / server 錯 → 靜默，唔好阻住用 app
       }
@@ -1620,6 +1627,12 @@ export default function App() {
       <Pressable focusable={false} style={s.syncCard} onPress={() => {}}>
         <Text style={s.syncTitle}>✨ 有新版本</Text>
         <Text style={s.syncSub}>已下載最新版本，立即重新載入即可更新。</Text>
+        {updateNotes ? (
+          <View style={s.otaNotes}>
+            <Text style={s.otaNotesLabel}>更新內容</Text>
+            <Text style={s.otaNotesText}>{updateNotes}</Text>
+          </View>
+        ) : null}
         <Pressable
           {...focusProps('ota-apply')}
           style={[s.syncBtn, focused('ota-apply')]}
@@ -2031,6 +2044,9 @@ const s = StyleSheet.create({
   },
   syncTitle: { color: C.text, fontSize: 18, fontWeight: '900' },
   syncSub: { color: C.muted, fontSize: 12, lineHeight: 17, marginBottom: 4 },
+  otaNotes: { backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: C.line2, borderRadius: 10, padding: 10, gap: 4 },
+  otaNotesLabel: { color: C.text, fontSize: 12, fontWeight: '800' },
+  otaNotesText: { color: C.muted, fontSize: 13, lineHeight: 19 },
   syncWho: { color: C.good, fontSize: 14, fontWeight: '800', marginBottom: 4 },
   syncInput: {
     backgroundColor: C.bg,

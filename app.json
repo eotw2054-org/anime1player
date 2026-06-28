@@ -29,7 +29,8 @@
     "extra": {
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
-      }
+      },
+      "releaseNotes": "修正進度條:可以正常拖放,唔會再跳返開頭。"
     },
     "updates": {
       "url": "https://u.expo.dev/313eb4ec-182a-4cb3-82c2-97bf209ba6a6",
