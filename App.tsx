@@ -44,60 +44,9 @@ import {
   mergeByRecency,
   SYNC_BASE,
 } from './lib/sync';
-
-// ===== 配色（style3 vibrant streaming base）=====
-const C = {
-  ink: '#0B0E1A',
-  bg: '#0E1322',
-  surface: '#141A2E',
-  raised: '#1B2440',
-  raised2: '#222C4E',
-  line: 'rgba(255,255,255,0.07)',
-  line2: 'rgba(255,255,255,0.12)',
-  text: '#F4F6FF',
-  muted: '#8A92B2',
-  mutedDim: '#646E92',
-  rose: '#FF4D8D',
-  violet: '#9B5CFF',
-  cyan: '#34E1E8',
-  good: '#5BE6A8',
-  amber: '#FFB23E',
-};
-
-const UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
-
-type SiteKey = keyof typeof SITES;
-type Tab = 'all' | 'fav';
-interface Chapter {
-  ep: number;
-  url: string;
-}
-interface Current {
-  anime: Anime;
-  episodeUrl: string;
-  episodeNo: string;
-  streams: { label: string; embedUrl: string; ms?: number }[];
-  streamIndex: number;
-  prevUrl: string | null;
-  nextUrl: string | null;
-}
-
-interface Progress {
-  url: string;
-  ep: string;
-  time: number;
-  at?: number;
-}
-
-const favKey = (a: { site: string; slug: string }) => a.site + '|' + a.slug;
-
-function fmtTime(sec: number): string {
-  if (!isFinite(sec) || sec < 0) sec = 0;
-  const m = Math.floor(sec / 60);
-  const s2 = Math.floor(sec % 60);
-  return `${m}:${s2 < 10 ? '0' : ''}${s2}`;
-}
+import { C, GLOW } from './theme';
+import { type SiteKey, type Tab, type Chapter, type Current, type Progress } from './lib/types';
+import { UA, favKey, fmtTime } from './lib/format';
 
 // 自訂播放控制（取代原生控制，等疊層上/下集同播放控制一齊 show/hide）
 function PlayerOverlay(props: {
@@ -2541,8 +2490,6 @@ export default function App() {
     </View>
   );
 }
-
-const GLOW = C.rose;
 
 const s = StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: C.bg },
