@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 修正:A1 設定選單用實體 D-pad 遙控時,而家可以揀到「允許遠端遙控」同「自定義名稱」(之前 focus 落唔到下面嗰兩個)。改用 ↑↓ 揀、OK 切換。\n• 請順便試下「分流」選單可唔可以開到 / 揀到,話我知。\n• (底層仍係架構重整第一階段)"
+      "releaseNotes": "• 修正 D-pad 遙控:分流選單而家可以用上下揀、OK 切換(之前 focus 入唔到選單,變咗背景喺度郁)。A1 設定選單改返用原生 focus,並接駁到「允許遠端遙控 / 自定義名稱」。\n• 麻煩喺投影機試:① 分流選單上下揀+OK；② A1 選單落唔落到嗰兩個 option。話我知邊個 work / 唔 work。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
