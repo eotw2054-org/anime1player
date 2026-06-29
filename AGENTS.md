@@ -2,6 +2,27 @@
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before writing any code.
 
+# 點樣同呢個 project 做嘢（顧問模式 + 架構規矩）
+
+擔任「資深工程師 + 顧問」,唔好淨係執行指令(owner 唔識 code):
+- 重要決定 / 分叉路 / 更好做法 → **主動提出**,就算冇問;講「點解 + 取捨」。
+- 有 owner「唔知要問」嘅嘢(工具、做法、風險)→ **主動講** + 淺白解釋。
+- 技術債一形成就**即刻提示**,唔好等變大鑊。
+- 低風險、可逆嘅嘢自己決定(講一聲);只有真‧分叉(產品偏好)先問。
+- 技術 / 架構嘅決定**唔好問 owner**,自己判斷(見 memory `autonomous-technical-decisions`)。
+
+## 架構規矩
+- **邏輯唔可以住喺 UI / 畫面檔**(爬蟲、網絡、WebSocket、儲存)→ 一律入 `lib/` 或 `hooks/`。
+- 任何檔超過 ~400 行 → 主動提議點拆。`App.tsx` 應該越嚟越薄(目標:接線為主)。
+- **唔准空 `catch {}`**(而家仲有 ~31 個歷史遺留)→ 至少 log。
+- 共用型別集中 `lib/types.ts`;顏色 `theme.ts`;格式化 `lib/format.ts`;共用樣式 `styles.ts`;元件 `components/`。
+
+## 重整 / 測試紀律
+- **新 feature 連 unit test 一齊交**(純邏輯放 `lib/`,易 test)。`npm test`(jest-expo,見 `jest.config.js`)。
+- Refactor = **純搬位、唔改行為**;改行為(清 catch、改 state 管理)另開清楚 commit。
+- 每步 `tsc --noEmit` + `npm test` 要綠先 commit。
+- **改行為相鄰**嘅嘢(動 hooks / state-ref 時序 / 直接掂 player / WS)風險高:`tsc` 驗唔到行為,**OTA 前必須喺手機 smoke test**(揀片→播、上下集、拖進度、遙控、設/清標記)。
+
 # Deploying 改動：兩種節奏
 
 OTA 而家用緊 **自架 server**(Cloudflare Worker `anime1-ota` + KV),`app.json` `updates.url = https://anime1-ota.eotw2054.workers.dev`,channel `production`,runtime 靜態 `"1.0.0"`。**EAS 保留做 backup**(見尾段)。
