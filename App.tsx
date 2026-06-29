@@ -146,6 +146,16 @@ export default function App() {
     srcHiRef.current = i;
     setSrcHi(i);
   };
+  // A1 設定選單嘅 D-pad 高亮（原生 focus 落唔到下面嘅 option，改用 hwKey 揀）
+  const [aHi, setAHi] = useState(0);
+  const aHiRef = useRef(0);
+  const setAHiBoth = (i: number) => {
+    aHiRef.current = i;
+    setAHi(i);
+  };
+  useEffect(() => {
+    if (siteOpen) setAHiBoth(0);
+  }, [siteOpen]);
 
   // 逐套 Start/End 標記（key = site|slug）；marksRef 俾一次性 listener 讀最新值
   const [marks, setMarks] = useState<Record<string, { start?: number; end?: number; at?: number }>>({});
@@ -1236,6 +1246,26 @@ export default function App() {
         }
         return;
       }
+      // A1 設定選單開住 → D-pad ↑↓ 揀，OK 切換（原生 focus 落唔到「允許遠端遙控/自訂名」，改用 hwKey）
+      if (siteOpenRef.current) {
+        const sites = Object.keys(SITES);
+        const n = sites.length + 2; // 來源站 + 允許遠端遙控 + 自訂名稱
+        if (name === 'up') setAHiBoth(Math.max(0, aHiRef.current - 1));
+        else if (name === 'down') setAHiBoth(Math.min(n - 1, aHiRef.current + 1));
+        else if (name === 'ok') {
+          const i = aHiRef.current;
+          if (i < sites.length) toggleSite(sites[i]);
+          else if (i === sites.length) {
+            const v = !allowRemoteRef.current;
+            setAllowRemote(v);
+            allowRemoteRef.current = v;
+            AsyncStorage.setItem('allowRemote', v ? '1' : '0');
+          } else {
+            nameInputRef.current?.focus();
+          }
+        }
+        return;
+      }
       if (!fullscreenRef.current) return;
       showControls();
       const c = currentRef.current;
@@ -1879,10 +1909,12 @@ export default function App() {
           return (
             <Pressable
               key={k}
-              {...focusProps('site-' + k)}
-              hasTVPreferredFocus={i === 0}
-              style={[s.spOpt, on && s.spOptOn, focused('site-' + k)]}
-              onPress={() => toggleSite(k)}>
+              focusable={false}
+              style={[s.spOpt, on && s.spOptOn, aHi === i && s.focused]}
+              onPress={() => {
+                setAHiBoth(i);
+                toggleSite(k);
+              }}>
               <View style={[s.spDot, !on && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
               <Text style={[s.spOptText, on && s.spOptTextOn]}>anime1.{k}</Text>
               <Text style={s.spOptCk}>{on ? '✓' : ''}</Text>
@@ -1891,9 +1923,10 @@ export default function App() {
         })}
         <Text style={s.spSection}>遙控</Text>
         <Pressable
-          {...focusProps('allow-remote')}
-          style={[s.spOpt, allowRemote && s.spOptOn, focused('allow-remote')]}
+          focusable={false}
+          style={[s.spOpt, allowRemote && s.spOptOn, aHi === allSites.length && s.focused]}
           onPress={() => {
+            setAHiBoth(allSites.length);
             const v = !allowRemote;
             setAllowRemote(v);
             allowRemoteRef.current = v;
@@ -1905,9 +1938,12 @@ export default function App() {
         </Pressable>
         {/* D-pad 目標:撳 OK → focus 輸入框,彈系統鍵盤;TextInput 本身 focusable=false 免重複搶焦 */}
         <Pressable
-          {...focusProps('rc-name')}
-          style={[s.spNameField, focused('rc-name')]}
-          onPress={() => nameInputRef.current?.focus()}>
+          focusable={false}
+          style={[s.spNameField, aHi === allSites.length + 1 && s.focused]}
+          onPress={() => {
+            setAHiBoth(allSites.length + 1);
+            nameInputRef.current?.focus();
+          }}>
           <TextInput
             ref={nameInputRef}
             focusable={false}
