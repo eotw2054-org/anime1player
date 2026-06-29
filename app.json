@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 內部架構重整(第一階段):抽出 theme / 型別 / 格式化 / 樣式 / PlayerOverlay 做獨立模組,加咗 42 個 unit test。功能應該同之前一模一樣 —— 請試下:揀片→播、上/下集、拖進度、全螢幕、遙控、設/清開始結束標記。如有異常請回報。"
+      "releaseNotes": "• 修正:A1 設定選單用實體 D-pad 遙控時,而家可以揀到「允許遠端遙控」同「自定義名稱」(之前 focus 落唔到下面嗰兩個)。改用 ↑↓ 揀、OK 切換。\n• 請順便試下「分流」選單可唔可以開到 / 揀到,話我知。\n• (底層仍係架構重整第一階段)"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
