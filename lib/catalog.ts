@@ -3,14 +3,46 @@ import { type Anime, SITES } from './anime1';
 import { type SiteKey, type Tab, type Chapter } from './types';
 import { favKey } from './format';
 
+/** 同名(正規化後)跨來源併成一組,清單一行顯示多個來源。 */
+export interface AnimeGroup {
+  key: string;       // 正規化名（fallback favKey）
+  primary: Anime;    // 代表（有真年份/資料較全嗰個）
+  sources: Anime[];  // 全部來源,primary 在前
+}
 export interface Section {
   title: string;
-  data: Anime[];
+  data: AnimeGroup[];
 }
 export interface EpBucket {
   start: number;
   end: number;
   label: string;
+}
+
+/** 片名正規化:去空白 + 去尾綴(動漫/動畫/線上看) + 小寫 → 跨來源同名歸一。 */
+export function normalizeName(name: string): string {
+  return String(name || '')
+    .replace(/\s+/g, '')
+    .replace(/(動漫|動畫|線上看)+$/g, '')
+    .toLowerCase();
+}
+
+const hasRealYear = (a: Anime) => /20\d\d/.test(a.updateYear);
+
+/** 由 anime list 併成同名分組,保留出現次序;primary 揀有真年份嗰個(否則第一個)。 */
+export function groupAnimes(animes: Anime[]): AnimeGroup[] {
+  const map = new Map<string, Anime[]>();
+  const order: string[] = [];
+  for (const a of animes) {
+    const key = normalizeName(a.name) || favKey(a);
+    if (!map.has(key)) { map.set(key, []); order.push(key); }
+    map.get(key)!.push(a);
+  }
+  return order.map((key) => {
+    const arr = map.get(key)!;
+    const sources = [...arr].sort((x, y) => (hasRealYear(x) ? 0 : 1) - (hasRealYear(y) ? 0 : 1));
+    return { key, primary: sources[0], sources };
+  });
 }
 
 /**
@@ -38,12 +70,14 @@ export function buildSections(
     return true;
   });
   const filtered = deduped.filter((a) => !q || a.search.includes(q) || a.slug.includes(q));
+  const grouped = groupAnimes(filtered); // 同名跨來源併行
   if (tab === 'fav') {
-    return filtered.length ? [{ title: '★ 我的最愛', data: filtered }] : [];
+    return grouped.length ? [{ title: '★ 我的最愛', data: grouped }] : [];
   }
-  const groups: Record<string, Anime[]> = {};
-  filtered.forEach((a) => {
-    (groups[a.updateYear] ||= []).push(a);
+  // 「全部」分頁:按 primary 嘅更新年份分組
+  const groups: Record<string, AnimeGroup[]> = {};
+  grouped.forEach((g) => {
+    (groups[g.primary.updateYear] ||= []).push(g);
   });
   return Object.keys(groups)
     .sort((x, y) => (y === '其他' ? -1 : x === '其他' ? 1 : Number(y) - Number(x)))

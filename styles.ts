@@ -92,6 +92,12 @@ export const s = StyleSheet.create({
   rowMeta: { color: C.muted, fontSize: 11, marginTop: 1 },
   rowSite: { color: C.cyan, fontWeight: '800' },
   rowLive: { color: C.good, fontStyle: 'italic' },
+  // 同名分組:每個來源一粒可撳 chip
+  rowSrcWrap: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 3 },
+  rowSrcChip: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: C.line2, backgroundColor: C.surface, marginRight: 6, marginTop: 3 },
+  rowSrcChipOn: { borderColor: 'rgba(52,225,232,0.55)', backgroundColor: 'rgba(52,225,232,0.12)' },
+  rowSrcText: { color: C.muted, fontSize: 11 },
+  rowSrcTextOn: { color: C.cyan, fontWeight: '700' },
   heart: { paddingHorizontal: 8, paddingVertical: 6 },
   heartIcon: { color: C.mutedDim, fontSize: 16, fontWeight: '700' },
   heartOn: { color: C.rose },

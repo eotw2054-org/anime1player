@@ -39,7 +39,7 @@ import { s } from './styles';
 import { type SiteKey, type Tab, type Chapter, type Current, type Progress, type Marks } from './lib/types';
 import { UA, favKey } from './lib/format';
 import { setMark, clearMark } from './lib/marks';
-import { buildSections, buildEpBuckets } from './lib/catalog';
+import { buildSections, buildEpBuckets, type AnimeGroup } from './lib/catalog';
 import { type PlayLine } from './lib/sources/types';
 import { favMapFromArray, activeFavorites, toggleFavEntry } from './lib/favorites';
 import PlayerOverlay from './components/PlayerOverlay';
@@ -471,6 +471,20 @@ export default function App() {
     // 切換最愛（軟刪除寫 tombstone，唔淨係 filter 走 —— 咁先傳播到其他裝置 + 防復活）
     const nextMap = toggleFavEntry(favAllRef.current, a, Date.now());
     applyFavAll(Object.values(nextMap)); // 更新 ref/state/儲存（active list 自動過濾 tombstone）
+    pushNow();
+  }
+
+  // 同名分組嘅心心：有任何來源已收藏 → 取消全部;否則收藏 primary。
+  function toggleFavGroup(g: AnimeGroup) {
+    const now = Date.now();
+    const faved = g.sources.filter((a) => {
+      const e = favAllRef.current[favKey(a)];
+      return e && !e.deleted;
+    });
+    let map = favAllRef.current;
+    if (faved.length) faved.forEach((a) => { map = toggleFavEntry(map, a, now); });
+    else map = toggleFavEntry(map, g.primary, now);
+    applyFavAll(Object.values(map));
     pushNow();
   }
 
@@ -1303,20 +1317,17 @@ export default function App() {
     />
   );
 
-  const renderAnimeRow = (item: Anime) => {
-    const k = favKey(item);
-    return (
-      <AnimeRow
-        item={item}
-        fav={favSet.has(k)}
-        active={selected != null && favKey(selected) === k}
-        onOpen={() => openAnime(item)}
-        onToggleFav={() => toggleFav(item)}
-        focusProps={focusProps}
-        focused={focused}
-      />
-    );
-  };
+  const renderAnimeRow = (group: AnimeGroup) => (
+    <AnimeRow
+      group={group}
+      favOf={(a) => favSet.has(favKey(a))}
+      activeOf={(a) => selected != null && favKey(selected) === favKey(a)}
+      onOpen={(a) => openAnime(a)}
+      onToggleFav={(g) => toggleFavGroup(g)}
+      focusProps={focusProps}
+      focused={focused}
+    />
+  );
 
   const sectionHeader = (title: string, count: number) => (
     <View style={s.yrHeader}>
@@ -1939,7 +1950,7 @@ export default function App() {
               <SectionList
                 style={{ flex: 1 }}
                 sections={sections}
-                keyExtractor={(a) => favKey(a)}
+                keyExtractor={(g) => g.key}
                 stickySectionHeadersEnabled
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 16 }}
@@ -2079,7 +2090,7 @@ export default function App() {
       <SectionList
         style={{ flex: 1 }}
         sections={sections}
-        keyExtractor={(a) => favKey(a)}
+        keyExtractor={(g) => g.key}
         stickySectionHeadersEnabled
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 28 }}

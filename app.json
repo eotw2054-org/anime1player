@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 來源「Gimy+」改名做「gimyplus」。\n• gimyplus 播放修正 + 「分流選擇」(多線路切換)已生效。\n• gimypro 暫未支援:佢係另一個 fork(/browse、/title、/watch 路由全唔同),要整第三個 template 先得;主來源 gimyplus + GimyTV/TW 已涵蓋同樣片庫。"
+      "releaseNotes": "• 同名分組:同一套戲跨來源(anime1.cc / gimyplus / gimytv…)而家併成一行,每個來源一粒可撳 chip,撳邊個用邊個來源播。\n• 「我的最愛」一樣分組顯示多來源;心心 = 成組收藏/取消。\n• 名稱正規化(去『動漫/動畫』尾綴)令『天命』同『天命動漫』歸一。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
