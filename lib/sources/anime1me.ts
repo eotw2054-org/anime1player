@@ -5,7 +5,7 @@
 //   播放  = <video data-apireq="{c,e,t,p,s}"> → POST v.anime1.me/api（需 .anime1.me cookie）→ 直接 mp4
 //   廣告  = 同 anicdn，共用 getAdRanges
 import { parse } from 'node-html-parser';
-import { type SourceProvider, type PlayLine } from './types';
+import { type SourceProvider, type PlayLine, type StreamResult } from './types';
 import { type Anime, type EpisodeInfo, type Stream } from '../anime1';
 import { type Chapter } from '../types';
 import { getAdRanges } from '../adskip';
@@ -123,7 +123,7 @@ export function parseApiSource(json: any): string | null {
   return src ? abs(String(src)) : null;
 }
 
-async function postApi(apireq: string): Promise<any | null> {
+async function postApi(apireq: string): Promise<Response | null> {
   const r = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -133,8 +133,35 @@ async function postApi(apireq: string): Promise<any | null> {
     },
     body: 'd=' + apireq, // apireq 本身已 url-encoded
   });
-  if (!r.ok) return null;
-  try { return await r.json(); } catch { return null; }
+  return r.ok ? r : null;
+}
+
+/**
+ * 由 /api 回應抽出 CDN 需要嘅 e/p/h cookie,砌成 Cookie header 值。
+ * mp4 喺 ExoPlayer（expo-video 另一條 HTTP stack,唔共用 RN cookie jar）冇呢三個 cookie 會 403。
+ * 主路:Expo 56 global fetch = expo/fetch,response._rawHeaders 係 [name,value][],
+ *       重複 set-cookie 各自一條(唔會被 whatwg-fetch Headers 用 ", " 合併)。
+ * 後備:headers.get('set-cookie')(會合併;喺逗號+name= 處切,本站 cookie 用 Max-Age 冇逗號故安全)。
+ */
+export function parseSetCookiePairs(resp: any): string {
+  const wanted = ['e', 'p', 'h'];
+  let cookieStrings: string[] = [];
+  const raw = resp?._rawHeaders;
+  if (Array.isArray(raw)) {
+    cookieStrings = raw
+      .filter((pair: any) => Array.isArray(pair) && String(pair[0]).toLowerCase() === 'set-cookie')
+      .map((pair: any) => String(pair[1]));
+  } else {
+    const merged = resp?.headers?.get?.('set-cookie');
+    if (merged) cookieStrings = String(merged).split(/,(?=\s*[A-Za-z0-9_-]+=)/);
+  }
+  const out: string[] = [];
+  for (const c of cookieStrings) {
+    const nv = (c.split(';')[0] || '').trim(); // 只要 name=value,丟 attributes
+    const name = nv.split('=')[0].trim();
+    if (nv.includes('=') && wanted.includes(name)) out.push(nv);
+  }
+  return out.join('; ');
 }
 
 async function fetchHtml(url: string): Promise<string> {
@@ -185,13 +212,20 @@ export const anime1meProvider: SourceProvider = {
     return { streams, prevUrl, nextUrl, episodeNo };
   },
 
-  async resolveStream(embedUrl: string): Promise<string | null> {
-    // 重新攞集數頁 → 新鮮 apireq（+ 確保 .anime1.me cookie 已設）→ POST API → mp4
+  async resolveStream(embedUrl: string): Promise<StreamResult | null> {
+    // 重新攞集數頁 → 新鮮 apireq → POST API → mp4 + CDN cookie（e/p/h）。
     const html = await fetchHtml(embedUrl);
     const apireq = parseApireq(html);
     if (!apireq) return null;
-    const json = await postApi(apireq);
-    return parseApiSource(json);
+    const resp = await postApi(apireq);
+    if (!resp) return null;
+    const cookie = parseSetCookiePairs(resp); // 喺讀 body 之前/之後皆可（讀嘅係 headers）
+    let json: any = null;
+    try { json = await resp.json(); } catch (e) { if (__DEV__) console.warn(e); return null; }
+    const url = parseApiSource(json);
+    if (!url) return null;
+    // mp4 GET 需要 e/p/h cookie,否則 403 → 經 VideoSource headers 傳俾 ExoPlayer。
+    return cookie ? { url, headers: { Cookie: cookie } } : { url };
   },
 
   adDetector: (m3u8Url, headers) => getAdRanges(m3u8Url, headers),

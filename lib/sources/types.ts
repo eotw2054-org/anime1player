@@ -12,6 +12,12 @@ export interface PlayLine {
   episodes: Chapter[];
 }
 
+/** resolveStream 結果：直接播放網址 + optional 播放 headers（例 anime1.me 需要 Cookie）。 */
+export interface StreamResult {
+  url: string;
+  headers?: Record<string, string>;
+}
+
 export interface SourceProvider {
   id: string;
   label: string;
@@ -25,8 +31,9 @@ export interface SourceProvider {
   getEpisodes(a: Anime): Promise<PlayLine[]>;
   /** 集數頁 → 候選播放器來源（未解析）+ 上/下集。 */
   getEpisode(url: string): Promise<EpisodeInfo>;
-  /** 候選 embed → 拆到底嘅直接 .m3u8/.mp4 網址（player 只食直接網址）。 */
-  resolveStream(embedUrl: string): Promise<string | null>;
+  /** 候選 embed → 拆到底嘅直接 .m3u8/.mp4 網址（player 只食直接網址）。
+   * 可回純網址,或 StreamResult（連播放需要嘅 headers,例 anime1.me 嘅 Cookie）。 */
+  resolveStream(embedUrl: string): Promise<string | StreamResult | null>;
   /** 廣告偵測（optional，source-specific）。唔實作就自動唔跳,唔會誤跳真內容。 */
   adDetector?(m3u8Url: string, headers?: Record<string, string>): Promise<AdRange[]>;
 }
