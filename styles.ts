@@ -111,10 +111,10 @@ export function makeStyles(C: Theme) {
 
   // ===== Player column =====
   playerCol: { flex: 1, padding: 12, gap: 8 },
-  playerArea: { flex: 1, borderRadius: 18, overflow: 'hidden', backgroundColor: '#05070f' },
+  playerArea: { flex: 1, borderRadius: 18, overflow: 'hidden', backgroundColor: C.ink },
   playerAreaPortrait: { flex: 0, aspectRatio: 16 / 9, marginHorizontal: 10, marginTop: 8 },
   video: { flex: 1, backgroundColor: '#000' },
-  placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0c0f1c' },
+  placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface },
   placeholderText: { color: C.muted, fontSize: 15 },
 
   // title bar
@@ -161,7 +161,7 @@ export function makeStyles(C: Theme) {
   epWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 8 },
   ep: { height: 30, borderRadius: 8, backgroundColor: C.raised, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   epOn: { backgroundColor: C.rose, borderColor: C.rose },
-  epText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  epText: { color: C.text, fontSize: 13, fontWeight: '800' },
   epTextOn: { color: '#fff' },
 
   // settings row (來源)

@@ -52,9 +52,26 @@ export const coffeeNight: Theme = {
   errText: '#EF9C8E',
 };
 
+// ——— 奶油（淺色café：奶油底 + 咖啡字 + 焦糖/金/珊瑚）———
+// 影片區仍用深色(C.ink);line/陰影改深色;rose→珊瑚、cyan→焦糖、good→金。
+export const cream: Theme = {
+  ink: '#241913', bg: '#F3E9D6', surface: '#FBF5EA', raised: '#FFFDF8', raised2: '#DCC8AC',
+  line: 'rgba(74,53,40,0.13)', line2: 'rgba(74,53,40,0.20)',
+  text: '#3A2A1E', muted: '#876F56', mutedDim: '#AB9778',
+  rose: '#D96A55', violet: '#A9794E', cyan: '#A9794E', good: '#C0851D', amber: '#C0851D',
+  glow: '#C0851D',
+  focusBg: 'rgba(169,121,78,0.10)', activeBg: 'rgba(192,133,29,0.13)', activeBorder: 'rgba(192,133,29,0.40)',
+  chipOnBg: 'rgba(169,121,78,0.14)', chipOnBorder: 'rgba(169,121,78,0.55)', resumeBorder: 'rgba(169,121,78,0.45)',
+  roleSegOnBg: 'rgba(169,121,78,0.18)',
+  loveBg: 'rgba(217,106,85,0.16)', loveSolid: 'rgba(217,106,85,0.92)', loveBtn: 'rgba(217,106,85,0.85)',
+  curOpenBorder: 'rgba(217,106,85,0.5)', brandBorder: 'rgba(169,121,78,0.45)',
+  errText: '#C04A33',
+};
+
 export const THEMES: Record<string, { label: string; theme: Theme }> = {
   darkNeon: { label: '霓虹夜（預設）', theme: darkNeon },
   coffeeNight: { label: '咖啡夜', theme: coffeeNight },
+  cream: { label: '奶油（淺色）', theme: cream },
 };
 export type ThemeId = keyof typeof THEMES;
 export const THEME_IDS = Object.keys(THEMES) as ThemeId[];
