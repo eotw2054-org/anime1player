@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 同名分組嘅來源 chip 改成單行橫向拖動(唔再換行佔幾行),好似線路選擇咁。\n• 每個來源站只出一粒 chip;最愛一樣分組顯示多來源。"
+      "releaseNotes": "• 收藏改成『記住戲名』,唔再綁死邊個來源 —— 收藏咗就喺最愛見到,而且顯示晒所有來源 chip(即使當時收藏嘅係 gimytv,一樣見到 anime1/gimyplus 等)。\n• 心心 = 成套加/減(取消會清走同名所有來源);最愛唔受『影片來源』開關影響,照顯示全部來源。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
