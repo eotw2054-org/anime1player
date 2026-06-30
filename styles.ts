@@ -11,13 +11,14 @@ export const s = StyleSheet.create({
 
   // ===== Header / brand =====
   glyph: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: C.rose,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  glyphImg: { width: 38, height: 38 },
   glyphText: { color: '#fff', fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
   glyphMini: { width: 30, height: 30, borderRadius: 9, backgroundColor: C.rose, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   glyphMiniText: { color: '#fff', fontSize: 12, fontWeight: '900' },
