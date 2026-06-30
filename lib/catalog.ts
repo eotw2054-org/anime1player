@@ -56,6 +56,24 @@ export function groupAnimes(animes: Anime[]): AnimeGroup[] {
   });
 }
 
+/** 由全目錄（所有站）攞同名（正規化）嘅來源,每站一個,有真年份/短名優先。供播放器「主要來源」下拉用。 */
+export function sourcesForName(lists: Record<string, Anime[]>, name: string | undefined): Anime[] {
+  const key = normalizeName(name || '');
+  if (!key) return [];
+  const all = (Object.keys(SITES) as SiteKey[]).flatMap((s) => lists[s] ?? []);
+  const matched = all
+    .filter((a) => (normalizeName(a.name) || favKey(a)) === key)
+    .sort((x, y) => (hasRealYear(x) ? 0 : 1) - (hasRealYear(y) ? 0 : 1) || x.name.length - y.name.length);
+  const seen = new Set<string>();
+  const out: Anime[] = [];
+  for (const a of matched) {
+    if (seen.has(a.site)) continue;
+    seen.add(a.site);
+    out.push(a);
+  }
+  return out;
+}
+
 /**
  * 由各站清單 + 篩選條件，整出側欄要顯示嘅分組。
  * - 「最愛」分頁：單一分組（或空）。

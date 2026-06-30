@@ -41,7 +41,7 @@ import { ThemeProvider, useTheme, useStyles, useThemeControl } from './ui-theme'
 import { type SiteKey, type Tab, type Chapter, type Current, type Progress, type Marks } from './lib/types';
 import { UA, favKey } from './lib/format';
 import { setMark, clearMark } from './lib/marks';
-import { buildSections, buildEpBuckets, normalizeName, type AnimeGroup } from './lib/catalog';
+import { buildSections, buildEpBuckets, normalizeName, sourcesForName, type AnimeGroup } from './lib/catalog';
 import { type PlayLine } from './lib/sources/types';
 import { favMapFromArray, activeFavorites, toggleFavEntry } from './lib/favorites';
 import PlayerOverlay from './components/PlayerOverlay';
@@ -111,6 +111,7 @@ function AppMain() {
   const [panelOpen, setPanelOpen] = useState(true); // 打直版控制區手動收合
   const [srcOpen, setSrcOpen] = useState(false);
   const [lineSelOpen, setLineSelOpen] = useState(false); // 分流（線路）下拉
+  const [siteSelOpen, setSiteSelOpen] = useState(false); // 主要來源（來源站）下拉
   const [siteOpen, setSiteOpen] = useState(false);
   const [preferredLabel, setPreferredLabel] = useState<string | null>(null);
   const preferredRef = useRef<string | null>(null);
@@ -1353,6 +1354,12 @@ function AppMain() {
   // 標題列（名 + 集 + 收起控制 + 我的最愛(打橫)）
   // 標題跟「正喺睇緊／揀緊」嗰套（selected 優先），切動畫即刻更新
   const titleAnime = selected ?? current?.anime ?? null;
+  // 同名分組嘅來源(每站一個),供標題列「主要來源」下拉跨站切換
+  const playerSources = useMemo(() => sourcesForName(lists, titleAnime?.name), [lists, titleAnime]);
+  const siteLabel = (site: string) => {
+    const k = (Object.keys(SITES) as (keyof typeof SITES)[]).find((kk) => SITES[kk] === site);
+    return k ? SITE_LABELS[k] ?? 'anime1.' + k : site;
+  };
   // 顯示緊嗰套 = 正播緊嗰套 先顯示集數／繼續觀看（免得新名配舊集數）
   // 角色 toggle（播放器/遙控器）
   const setRoleP = (r: 'player' | 'remote') => {
@@ -1383,24 +1390,7 @@ function AppMain() {
     </View>
   );
 
-  const playingThis = !!(current && titleAnime && favKey(current.anime) === favKey(titleAnime));
-  const titleBar = titleAnime && (
-    <TitleBar
-      name={titleAnime.name}
-      playingEp={playingThis ? current!.episodeNo : null}
-      roleToggle={roleToggle}
-      showPanelToggle={!isLandscape && !!selected}
-      panelOpen={panelOpen}
-      onTogglePanel={() => {
-        const v = !panelOpen;
-        setPanelOpen(v);
-        setFlag(K.panelOpen, v);
-      }}
-      favFilter={isLandscape ? favFilterBtn : null}
-      focusProps={focusProps}
-      focused={focused}
-    />
-  );
+  // titleBar 定義移到 srcSiteBtn/srcSelectorBtn/lineSelBtn 之後（controls 要引用佢哋）
 
   // 打直版：搜尋 + 收藏（收藏目前揀緊嗰套）同一行
   const titleFaved = !!titleAnime && favNameSet.has(normalizeName(titleAnime.name) || favKey(titleAnime));
@@ -1514,6 +1504,44 @@ function AppMain() {
     </Pressable>
   );
 
+  // 主要來源（來源站）下拉 —— 同名分組有多過一個來源先顯示;揀咗 → openAnime 跨站重開
+  const srcSiteBtn = titleAnime && playerSources.length > 1 && (
+    <Pressable
+      {...focusProps('site-sel')}
+      style={[s.srcBar, focused('site-sel')]}
+      onPress={() => setSiteSelOpen(true)}>
+      <Text style={s.srcBars}>☁</Text>
+      <Text style={s.srcName} numberOfLines={1}>
+        {siteLabel(titleAnime.site)}
+      </Text>
+      <Text style={s.srcCaret}>▾</Text>
+    </Pressable>
+  );
+
+  // 標題列：[主要來源 ▾][分流 ▾][收起]（片名/集數已移入影片左上角）
+  const titleBar = titleAnime && (
+    <TitleBar
+      controls={
+        <>
+          {srcSiteBtn}
+          {srcSelectorBtn}
+          {lineSelBtn}
+        </>
+      }
+      roleToggle={roleToggle}
+      showPanelToggle={!isLandscape && !!selected}
+      panelOpen={panelOpen}
+      onTogglePanel={() => {
+        const v = !panelOpen;
+        setPanelOpen(v);
+        setFlag(K.panelOpen, v);
+      }}
+      favFilter={isLandscape ? favFilterBtn : null}
+      focusProps={focusProps}
+      focused={focused}
+    />
+  );
+
   const autoBestToggle = (
     <Pressable
       {...focusProps('auto-best')}
@@ -1561,7 +1589,6 @@ function AppMain() {
   // 打橫版：來源一行 + 動作上下排（右欄窄）
   const settingsRow = current && (
     <View style={s.settingsRow}>
-      {srcSelectorBtn}
       {resolving && <ActivityIndicator color={C.cyan} style={{ marginLeft: 4 }} />}
     </View>
   );
@@ -1835,6 +1862,37 @@ function AppMain() {
     </Pressable>
   );
 
+  const srcSiteMenu = siteSelOpen && (
+    <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSiteSelOpen(false)}>
+      <Pressable focusable={false} style={s.srcMenu} onPress={() => {}}>
+        <Text style={s.srcMenuTitle}>選擇主要來源</Text>
+        <ScrollView>
+          {playerSources.map((src, i) => {
+            const on = titleAnime != null && favKey(src) === favKey(titleAnime);
+            return (
+              <Pressable
+                key={favKey(src)}
+                {...focusProps('site-' + i)}
+                hasTVPreferredFocus={on}
+                style={[s.srcItem, on && s.srcItemOn, focused('site-' + i)]}
+                onPress={() => {
+                  setSiteSelOpen(false);
+                  if (!on) openAnime(src);
+                }}>
+                <Text style={s.srcBars}>☁</Text>
+                <Text style={[s.srcItemText, on && s.srcItemTextOn]} numberOfLines={1}>
+                  {siteLabel(src.site)}
+                </Text>
+                <View style={{ flex: 1 }} />
+                {on && <Text style={s.srcItemCk}>✓</Text>}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </Pressable>
+    </Pressable>
+  );
+
   // ========= 雲端同步登入 =========
   const syncModal = syncOpen && (
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSyncOpen(false)}>
@@ -2021,7 +2079,6 @@ function AppMain() {
         {selected && (
           <View style={s.rightRail}>
             {pickerHeader}
-            {lineSelBtn}
             {rangeTabs}
             {loadingChapters ? (
               <ActivityIndicator color={C.cyan} style={{ marginTop: 16 }} />
@@ -2037,7 +2094,7 @@ function AppMain() {
 
         {playerHost}
         {siteMenu}
-        {sourceMenu}{lineSelMenu}
+        {sourceMenu}{lineSelMenu}{srcSiteMenu}
         {syncModal}
         {settingsModal}
         {updateModal}
@@ -2087,18 +2144,9 @@ function AppMain() {
       {/* 控制行：片名(走馬燈，填滿空間) · 分流條 · 收起 同一行（角色 toggle 已搬上頂 bar）*/}
       {!fullscreen && selected && (
         <View style={s.portCtrlRow}>
-          {titleAnime && (
-            <View style={s.ctrlTitleWrap}>
-              <Text style={[s.ctrlTitle, { flexShrink: 1 }]} numberOfLines={1}>
-                {titleAnime.name}
-              </Text>
-              <Text style={s.ctrlCount} numberOfLines={1}>
-                {' '}
-                · 共 {chapters.length} 集
-              </Text>
-            </View>
-          )}
+          {srcSiteBtn}
           {srcSelectorBtn}
+          {lineSelBtn}
           {resolving && <ActivityIndicator color={C.cyan} style={{ marginLeft: 4 }} />}
           <Pressable
             {...focusProps('panel-toggle')}
@@ -2117,7 +2165,6 @@ function AppMain() {
       {/* 固定控制區：揀咗動畫時鎖喺頂，唔跟清單向上捲；可用「收起 / 顯示」手動收合 */}
       {selected && panelOpen && (
         <View style={s.lockedControls}>
-          {lineSelBtn}
           {rangeTabs}
           {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridPort}
         </View>
@@ -2140,7 +2187,7 @@ function AppMain() {
 
       {playerHost}
       {siteMenu}
-      {sourceMenu}{lineSelMenu}
+      {sourceMenu}{lineSelMenu}{srcSiteMenu}
       {syncModal}
       {settingsModal}
       {updateModal}
