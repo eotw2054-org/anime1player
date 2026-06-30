@@ -54,6 +54,7 @@ import { favMapFromArray, activeFavorites, toggleFavEntry } from './lib/favorite
 import PlayerOverlay from './components/PlayerOverlay';
 import EpisodeGrid from './components/EpisodeGrid';
 import RemotePanel from './components/RemotePanel';
+import TitleBar from './components/TitleBar';
 
 export default function App() {
   const { width, height } = useWindowDimensions();
@@ -1439,33 +1440,22 @@ export default function App() {
   );
 
   const playingThis = !!(current && titleAnime && favKey(current.anime) === favKey(titleAnime));
-  const resumeAt = playingThis ? progressRef.current[favKey(titleAnime!)]?.time ?? 0 : 0;
   const titleBar = titleAnime && (
-    <View style={s.titleBar}>
-      <Text style={s.tbName} numberOfLines={1}>
-        {titleAnime.name}
-      </Text>
-      {playingThis && (
-        <View style={s.tbEp}>
-          <Text style={s.tbEpText}>第 {current!.episodeNo} 集</Text>
-        </View>
-      )}
-      <View style={{ flex: 1 }} />
-      {roleToggle}
-      {!isLandscape && selected && (
-        <Pressable
-          {...focusProps('panel-toggle')}
-          style={[s.panelToggle, focused('panel-toggle')]}
-          onPress={() => {
-            const v = !panelOpen;
-            setPanelOpen(v);
-            setFlag(K.panelOpen, v);
-          }}>
-          <Text style={s.panelToggleText}>{panelOpen ? '▴ 收起' : '▾ 顯示'}</Text>
-        </Pressable>
-      )}
-      {isLandscape && favFilterBtn}
-    </View>
+    <TitleBar
+      name={titleAnime.name}
+      playingEp={playingThis ? current!.episodeNo : null}
+      roleToggle={roleToggle}
+      showPanelToggle={!isLandscape && !!selected}
+      panelOpen={panelOpen}
+      onTogglePanel={() => {
+        const v = !panelOpen;
+        setPanelOpen(v);
+        setFlag(K.panelOpen, v);
+      }}
+      favFilter={isLandscape ? favFilterBtn : null}
+      focusProps={focusProps}
+      focused={focused}
+    />
   );
 
   // 打直版：搜尋 + 收藏（收藏目前揀緊嗰套）同一行
