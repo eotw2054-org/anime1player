@@ -14,8 +14,23 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before 
 ## 架構規矩
 - **邏輯唔可以住喺 UI / 畫面檔**(爬蟲、網絡、WebSocket、儲存)→ 一律入 `lib/` 或 `hooks/`。
 - 任何檔超過 ~400 行 → 主動提議點拆。`App.tsx` 應該越嚟越薄(目標:接線為主)。
-- **唔准空 `catch {}`**(而家仲有 ~31 個歷史遺留)→ 至少 log。
+- **唔准空 `catch {}`**(歷史遺留已清,維持 0 個)→ 至少 `if (__DEV__) console.warn(e)`。
 - 共用型別集中 `lib/types.ts`;顏色 `theme.ts`;格式化 `lib/format.ts`;共用樣式 `styles.ts`;元件 `components/`。
+
+## 架構地圖（已建立,新嘢一律跟返呢個結構,唔好倒退返塞晒入 App.tsx）
+
+2026-06 做咗一輪架構重整(App.tsx 2914 → ~1800 行)。`App.tsx` 而家只負責「**接線 + render**」,各層職責分明:
+
+- **`lib/sources/`** —— **來源抽象層**(headline:phone 想加新片源好易):
+  - `types.ts` = `SourceProvider` 合約(Player ↔ plugin 唯一語言);`registry.ts` = `getProvider(anime)` / `getProviderBySite(site)`;每個來源一個 module(`anime1.ts`、`anime1me.ts`、`maccms.ts`…)。
+  - **加新來源 = 寫多一個 `lib/sources/<name>.ts` 實作 `SourceProvider` + 喺 `registry` 登記;`App.tsx` 一行都唔好改。**
+  - App **只准**經 `getProvider(...)` 叫合約方法,**唔准**直接 `import` 任何具體來源嘅爬蟲函數。
+- **`lib/`** —— **純邏輯**(無 React / 無 IO,**連 unit test**):`anime1`/`maccms`(解析)、`adskip`、`sync`、`catalog`(清單 + 同名跨來源分組)、`favorites`、`marks`、`remoteProgress`、`format`、`types`。
+- **`hooks/`** —— 可重用 stateful 邏輯 / 副作用:`useOtaUpdate`、`useOrientationLock`、`useKeepAwakeWhile`…(新嘅副作用/狀態邏輯放呢度,唔好塞 App)。
+- **`components/`** —— 純展示元件(靠 props):`PlayerOverlay`、`RemotePanel`、`EpisodeGrid`、`TitleBar`、`AnimeRow`…
+- **`storage/persist.ts`** —— 所有 AsyncStorage(key 集中喺 `K`,用 `getItem/setStr/setJSON/setFlag`);**唔好**周圍散 `AsyncStorage.*`。
+- **`theme.ts`** 顏色 · **`styles.ts`** 共用 StyleSheet。
+- 重大 feature / 重整行 **OpenSpec**(`openspec/changes/…` → 完成後 `openspec archive`,spec 入 `openspec/specs/`)。
 
 ## 重整 / 測試紀律
 - **新 feature 連 unit test 一齊交**(純邏輯放 `lib/`,易 test)。`npm test`(jest-expo,見 `jest.config.js`)。
