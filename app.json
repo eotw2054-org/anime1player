@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 架構重整:選集格抽成獨立 component(打橫/打直共用),行為不變。\n• 麻煩試下選集(揀集→播)同正常用,有問題回報。"
+      "releaseNotes": "• 架構重整:遙控器面板抽成獨立 component,行為不變。\n• 麻煩用手機遙控器試下:揀播放器、play/pause、上下集、拖進度、設/清開始結束、全屏幕、鎖定。有問題回報。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
