@@ -128,6 +128,16 @@ export default function PlayerOverlay(props: {
             </View>
           )}
 
+          {/* inline：左上角片名 + 集數 */}
+          {!fullscreen && current && (
+            <View style={s.inlineTop} pointerEvents="none">
+              <Text style={s.inlineTopName} numberOfLines={1}>
+                {current.anime.name}
+              </Text>
+              <Text style={s.inlineTopEp}>第 {current.episodeNo} 集</Text>
+            </View>
+          )}
+
           {/* 中央：倒退10 / 播放暫停 / 快進10 */}
           <View style={s.ctrCenter} pointerEvents="box-none">
             <Pressable

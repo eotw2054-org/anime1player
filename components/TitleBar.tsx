@@ -2,11 +2,10 @@ import { type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useStyles } from '../ui-theme';
 
-// 標題列：片名 + (播放中)集數 + 角色 toggle + 收起/顯示 + (打橫)最愛篩選。
-// roleToggle / favFilter 由 App 以 slot 形式傳入。
+// 標題列：主要來源 / 分流 下拉（由 App 以 controls slot 傳入）+ 角色 toggle + 收起/顯示 + (打橫)最愛篩選。
+// 片名 + 集數 已移入影片畫面左上角(見 PlayerOverlay)。
 export default function TitleBar({
-  name,
-  playingEp,
+  controls,
   roleToggle,
   showPanelToggle,
   panelOpen,
@@ -15,8 +14,7 @@ export default function TitleBar({
   focusProps,
   focused,
 }: {
-  name: string;
-  playingEp: string | null;
+  controls: ReactNode;
   roleToggle: ReactNode;
   showPanelToggle: boolean;
   panelOpen: boolean;
@@ -28,14 +26,7 @@ export default function TitleBar({
   const s = useStyles();
   return (
     <View style={s.titleBar}>
-      <Text style={s.tbName} numberOfLines={1}>
-        {name}
-      </Text>
-      {playingEp != null && (
-        <View style={s.tbEp}>
-          <Text style={s.tbEpText}>第 {playingEp} 集</Text>
-        </View>
-      )}
+      {controls}
       <View style={{ flex: 1 }} />
       {roleToggle}
       {showPanelToggle && (

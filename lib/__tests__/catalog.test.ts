@@ -1,4 +1,4 @@
-import { buildSections, buildEpBuckets, groupAnimes, normalizeName } from '../catalog';
+import { buildSections, buildEpBuckets, groupAnimes, normalizeName, sourcesForName } from '../catalog';
 import { type Anime } from '../anime1';
 import { type Chapter } from '../types';
 
@@ -156,5 +156,36 @@ describe('buildEpBuckets', () => {
       { start: 50, end: 100, label: '51–100' },
       { start: 100, end: 120, label: '101–120' },
     ]);
+  });
+});
+
+describe('sourcesForName (player 主要來源 下拉)', () => {
+  it('collects same-name sources across sites, one per site', () => {
+    const lists = {
+      in: [anime('x', '2026', '進擊', 'https://anime1.in')],
+      one: [anime('y', '2026', '進擊', 'https://gimyplus.com')],
+    };
+    const out = sourcesForName(lists, '進擊');
+    expect(out.map((a) => a.site).sort()).toEqual(['https://anime1.in', 'https://gimyplus.com']);
+  });
+
+  it('dedups multiple entries from the same site', () => {
+    const lists = {
+      in: [anime('x', '2026', '進擊', 'https://anime1.in'), anime('x2', '2025', '進擊', 'https://anime1.in')],
+    };
+    expect(sourcesForName(lists, '進擊')).toHaveLength(1);
+  });
+
+  it('matches by normalized name across sites', () => {
+    const lists = {
+      in: [anime('x', '2026', '進擊 動畫', 'https://anime1.in')],
+      one: [anime('y', '2026', '進擊', 'https://gimyplus.com')],
+    };
+    expect(sourcesForName(lists, '進擊 線上看')).toHaveLength(2);
+  });
+
+  it('returns [] for empty / undefined name', () => {
+    expect(sourcesForName({ in: [anime('x', '2026')] }, '')).toEqual([]);
+    expect(sourcesForName({ in: [anime('x', '2026')] }, undefined)).toEqual([]);
   });
 });
