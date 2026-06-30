@@ -21,8 +21,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import * as Updates from 'expo-updates';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { K, listKey, getItem, removeItem, setStr, setJSON, setFlag } from './storage/persist';
 import {
   type Anime,
@@ -57,6 +55,8 @@ import RemotePanel from './components/RemotePanel';
 import TitleBar from './components/TitleBar';
 import AnimeRow from './components/AnimeRow';
 import { useOtaUpdate } from './hooks/useOtaUpdate';
+import { useOrientationLock } from './hooks/useOrientationLock';
+import { useKeepAwakeWhile } from './hooks/useKeepAwakeWhile';
 
 export default function App() {
   const { width, height } = useWindowDimensions();
@@ -138,19 +138,7 @@ export default function App() {
   useEffect(() => {
     fullscreenRef.current = fullscreen;
   }, [fullscreen]);
-  // 手機版：入全螢幕自動打橫，退出自動返打直（電視固定打橫，唔郁）
-  useEffect(() => {
-    if (Platform.isTV) return;
-    (async () => {
-      try {
-        await ScreenOrientation.lockAsync(
-          fullscreen
-            ? ScreenOrientation.OrientationLock.LANDSCAPE
-            : ScreenOrientation.OrientationLock.PORTRAIT_UP
-        );
-      } catch (e) { if (__DEV__) console.warn(e); }
-    })();
-  }, [fullscreen]);
+  useOrientationLock(fullscreen);
   const setSrcHiBoth = (i: number) => {
     srcHiRef.current = i;
     setSrcHi(i);
@@ -761,16 +749,8 @@ export default function App() {
     return () => clearTimeout(id);
   }, [width, height, sidebarOpen, selected, isPlaying, fullscreen]);
 
-  // 全螢幕播放時防止入屏保：hold 住一支獨立於 play/pause 狀態嘅 keep-awake，
-  // 咁就算卡 buffer / 跳廣告 / 換集，閒置計時器都唔會彈出屏保（內嵌窗仍靠 expo-video 內建）
-  useEffect(() => {
-    if (isPlaying && fullscreen) {
-      activateKeepAwakeAsync('fs-player');
-      return () => {
-        deactivateKeepAwake('fs-player');
-      };
-    }
-  }, [isPlaying, fullscreen]);
+  // 全螢幕播放時防止入屏保（獨立於 play/pause，卡 buffer / 跳廣告 / 換集 都唔彈屏保）
+  useKeepAwakeWhile(!!(isPlaying && fullscreen));
 
   // 控制列自動隱藏（同原生控制一齊 show/hide）
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
