@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useEventListener } from 'expo';
+import { useFonts } from 'expo-font';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import * as Updates from 'expo-updates';
 import { K, listKey, getItem, removeItem, setStr, setJSON, setFlag } from './storage/persist';
@@ -2148,6 +2149,12 @@ function AppMain() {
 }
 
 export default function App() {
+  // 圓體字型(jf 粉圓 + Baloo 2)—— 載完先 render,免閃系統字
+  const [fontsLoaded] = useFonts({
+    Huninn: require('./assets/fonts/Huninn.ttf'),
+    Baloo2: require('./assets/fonts/Baloo2.ttf'),
+  });
+  if (!fontsLoaded) return null;
   return (
     <ThemeProvider>
       <AppMain />

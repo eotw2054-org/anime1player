@@ -6,6 +6,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-picker/picker": "2.11.4",
     "expo": "~56.0.12",
+    "expo-font": "~56.0.7",
     "expo-keep-awake": "~56.0.3",
     "expo-screen-orientation": "~56.0.5",
     "expo-status-bar": "~56.0.4",
