@@ -69,10 +69,27 @@ export function buildSections(
   tab: Tab,
 ): Section[] {
   const q = query.trim().toLowerCase();
-  const src =
-    tab === 'fav'
-      ? favorites
-      : (Object.keys(SITES) as SiteKey[]).filter((s) => enabledSites[s]).flatMap((s) => lists[s] ?? []);
+
+  if (tab === 'fav') {
+    // 收藏 = 記住戲名(唔記邊個 source)→ 用全目錄(所有站)補齊每套嘅所有來源
+    const favNames = new Set(favorites.map((a) => normalizeName(a.name) || favKey(a)));
+    const pool: Anime[] = [];
+    const seenK = new Set<string>();
+    const add = (a: Anime) => {
+      const k = favKey(a);
+      if (!seenK.has(k)) { seenK.add(k); pool.push(a); }
+    };
+    favorites.forEach(add);
+    for (const s of Object.keys(SITES) as SiteKey[]) {
+      for (const a of lists[s] ?? []) if (favNames.has(normalizeName(a.name) || favKey(a))) add(a);
+    }
+    const filteredFav = pool.filter((a) => !q || a.search.includes(q) || a.slug.includes(q));
+    const groupedFav = groupAnimes(filteredFav).filter((g) => favNames.has(g.key));
+    return groupedFav.length ? [{ title: '★ 我的最愛', data: groupedFav }] : [];
+  }
+
+  // 「全部」分頁:已啟用站台 → 去重 → 搜尋 → 同名分組 → 按 primary 年份分組
+  const src = (Object.keys(SITES) as SiteKey[]).filter((s) => enabledSites[s]).flatMap((s) => lists[s] ?? []);
   const seen = new Set<string>();
   const deduped = src.filter((a) => {
     const k = favKey(a);
@@ -82,10 +99,6 @@ export function buildSections(
   });
   const filtered = deduped.filter((a) => !q || a.search.includes(q) || a.slug.includes(q));
   const grouped = groupAnimes(filtered); // 同名跨來源併行
-  if (tab === 'fav') {
-    return grouped.length ? [{ title: '★ 我的最愛', data: grouped }] : [];
-  }
-  // 「全部」分頁:按 primary 嘅更新年份分組
   const groups: Record<string, AnimeGroup[]> = {};
   grouped.forEach((g) => {
     (groups[g.primary.updateYear] ||= []).push(g);

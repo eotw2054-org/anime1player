@@ -114,6 +114,31 @@ describe('buildSections (fav tab)', () => {
   it('returns [] when no favorites match', () => {
     expect(buildSections({}, {}, [], '', 'fav')).toEqual([]);
   });
+
+  it('enriches a bookmarked name with ALL its sources from catalog (ignores enabled + which source was saved)', () => {
+    // 只收藏咗 gimytv 版「貓與龍」
+    const favs = [anime('tv1', '其他', '貓與龍', 'https://gimytv.biz')];
+    const lists = {
+      me: [anime('me1', '2026', '貓與龍', 'https://anime1.me')],
+      cc: [anime('cc1', '2026', '貓與龍動漫', 'https://anime1.cc')], // 同名(正規化後)
+    };
+    const out = buildSections(lists, { me: true, cc: false } as any, favs, '', 'fav');
+    expect(out).toHaveLength(1);
+    const g = out[0].data[0];
+    // 即使 cc 未啟用、收藏嗰個係 gimytv,最愛都顯示晒 3 個來源
+    expect(g.sources.map((a) => a.site).sort()).toEqual([
+      'https://anime1.cc',
+      'https://anime1.me',
+      'https://gimytv.biz',
+    ]);
+  });
+
+  it('a bookmarked name not in catalog still shows (its saved source)', () => {
+    const favs = [anime('x1', '其他', '冷門舊番', 'https://gimytw.net')];
+    const out = buildSections({ me: [anime('m', '2026', '其他戲')] }, { me: true } as any, favs, '', 'fav');
+    expect(out).toHaveLength(1);
+    expect(out[0].data[0].primary.name).toBe('冷門舊番');
+  });
 });
 
 describe('buildEpBuckets', () => {

@@ -15,7 +15,7 @@ function siteShort(site: string): string {
 // 側欄清單一行：同名跨來源併成一行，片名 + 每個來源一粒可撳 chip + 心心收藏。
 export default function AnimeRow({
   group,
-  favOf,
+  fav,
   activeOf,
   onOpen,
   onToggleFav,
@@ -23,7 +23,7 @@ export default function AnimeRow({
   focused,
 }: {
   group: AnimeGroup;
-  favOf: (a: Anime) => boolean;
+  fav: boolean; // 成組收藏狀態（按戲名,唔按 source）
   activeOf: (a: Anime) => boolean;
   onOpen: (a: Anime) => void;
   onToggleFav: (g: AnimeGroup) => void;
@@ -33,7 +33,6 @@ export default function AnimeRow({
   const { primary, sources } = group;
   const hasActive = sources.some(activeOf);
   const pk = favKey(primary);
-  const fav = sources.some(favOf); // 任何來源收藏 = 成組當收藏
   return (
     <View style={[s.row, hasActive && s.rowActive]}>
       <View style={s.rowMain}>

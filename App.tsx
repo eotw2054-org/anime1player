@@ -39,7 +39,7 @@ import { s } from './styles';
 import { type SiteKey, type Tab, type Chapter, type Current, type Progress, type Marks } from './lib/types';
 import { UA, favKey } from './lib/format';
 import { setMark, clearMark } from './lib/marks';
-import { buildSections, buildEpBuckets, type AnimeGroup } from './lib/catalog';
+import { buildSections, buildEpBuckets, normalizeName, type AnimeGroup } from './lib/catalog';
 import { type PlayLine } from './lib/sources/types';
 import { favMapFromArray, activeFavorites, toggleFavEntry } from './lib/favorites';
 import PlayerOverlay from './components/PlayerOverlay';
@@ -70,7 +70,8 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('all');
 
   const [favorites, setFavorites] = useState<Anime[]>([]);
-  const favSet = useMemo(() => new Set(favorites.map(favKey)), [favorites]);
+  // 收藏係「記住戲名」:用正規化名做集合（唔記住邊個 source）
+  const favNameSet = useMemo(() => new Set(favorites.map((a) => normalizeName(a.name) || favKey(a))), [favorites]);
   useEffect(() => {
     favoritesRef.current = favorites;
   }, [favorites]);
@@ -467,26 +468,20 @@ export default function App() {
     }
   }
 
-  function toggleFav(a: Anime) {
-    // 切換最愛（軟刪除寫 tombstone，唔淨係 filter 走 —— 咁先傳播到其他裝置 + 防復活）
-    const nextMap = toggleFavEntry(favAllRef.current, a, Date.now());
-    applyFavAll(Object.values(nextMap)); // 更新 ref/state/儲存（active list 自動過濾 tombstone）
-    pushNow();
-  }
-
-  // 同名分組嘅心心：有任何來源已收藏 → 取消全部;否則收藏 primary。
-  function toggleFavGroup(g: AnimeGroup) {
+  // 收藏 = 記住「戲名」(唔記住邊個 source)。
+  // 同名(正規化)有收藏 → 取消全部同名來源;否則收藏一個代表 rep。
+  // 軟刪除寫 tombstone(唔淨係 filter 走)→ 先可傳播到其他裝置 + 防復活。
+  function toggleFavName(name: string, rep: Anime) {
+    const key = normalizeName(name) || favKey(rep);
     const now = Date.now();
-    const faved = g.sources.filter((a) => {
-      const e = favAllRef.current[favKey(a)];
-      return e && !e.deleted;
-    });
+    const matching = activeFavorites(favAllRef.current).filter((a) => (normalizeName(a.name) || favKey(a)) === key);
     let map = favAllRef.current;
-    if (faved.length) faved.forEach((a) => { map = toggleFavEntry(map, a, now); });
-    else map = toggleFavEntry(map, g.primary, now);
-    applyFavAll(Object.values(map));
+    if (matching.length) matching.forEach((a) => { map = toggleFavEntry(map, a, now); });
+    else map = toggleFavEntry(map, rep, now);
+    applyFavAll(Object.values(map)); // 更新 ref/state/儲存（active list 自動過濾 tombstone）
     pushNow();
   }
+  const toggleFavGroup = (g: AnimeGroup) => toggleFavName(g.primary.name, g.primary);
 
   async function openAnime(a: Anime) {
     setSelected(a);
@@ -1320,7 +1315,7 @@ export default function App() {
   const renderAnimeRow = (group: AnimeGroup) => (
     <AnimeRow
       group={group}
-      favOf={(a) => favSet.has(favKey(a))}
+      fav={favNameSet.has(group.key)}
       activeOf={(a) => selected != null && favKey(selected) === favKey(a)}
       onOpen={(a) => openAnime(a)}
       onToggleFav={(g) => toggleFavGroup(g)}
@@ -1402,14 +1397,15 @@ export default function App() {
   );
 
   // 打直版：搜尋 + 收藏（收藏目前揀緊嗰套）同一行
+  const titleFaved = !!titleAnime && favNameSet.has(normalizeName(titleAnime.name) || favKey(titleAnime));
   const collectBtn = titleAnime && (
     <Pressable
       {...focusProps('now-fav')}
       hitSlop={6}
-      style={[s.collectBtn, favSet.has(favKey(titleAnime)) && s.collectBtnOn, focused('now-fav')]}
-      onPress={() => toggleFav(titleAnime)}>
-      <Text style={[s.collectText, favSet.has(favKey(titleAnime)) && s.collectTextOn]}>
-        {favSet.has(favKey(titleAnime)) ? '♥ 已收藏' : '♡ 收藏'}
+      style={[s.collectBtn, titleFaved && s.collectBtnOn, focused('now-fav')]}
+      onPress={() => toggleFavName(titleAnime.name, titleAnime)}>
+      <Text style={[s.collectText, titleFaved && s.collectTextOn]}>
+        {titleFaved ? '♥ 已收藏' : '♡ 收藏'}
       </Text>
     </Pressable>
   );
