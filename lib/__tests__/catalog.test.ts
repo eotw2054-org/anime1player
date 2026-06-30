@@ -1,15 +1,15 @@
-import { buildSections, buildEpBuckets } from '../catalog';
+import { buildSections, buildEpBuckets, groupAnimes, normalizeName } from '../catalog';
 import { type Anime } from '../anime1';
 import { type Chapter } from '../types';
 
 const SITE = 'https://anime1.in';
-const anime = (slug: string, year: string, name = slug): Anime => ({
-  site: SITE,
+const anime = (slug: string, year: string, name = slug, site = SITE): Anime => ({
+  site,
   slug,
   name,
   num: 1,
   cntText: '',
-  latestUrl: `${SITE}/${slug}`,
+  latestUrl: `${site}/${slug}`,
   update: `${year}-01-01`,
   updateYear: year,
   search: (name + ' ' + slug).toLowerCase(),
@@ -32,7 +32,7 @@ describe('buildSections (all tab)', () => {
   it('only includes enabled sites', () => {
     const two = { in: [anime('a', '2026')], one: [anime('b', '2026')] };
     const out = buildSections(two, { in: true, one: false, cc: false }, [], '', 'all');
-    expect(out.flatMap((s) => s.data.map((a) => a.slug))).toEqual(['a']);
+    expect(out.flatMap((s) => s.data.map((g) => g.primary.slug))).toEqual(['a']);
   });
 
   it('dedups by site|slug across sites (keeps first)', () => {
@@ -40,12 +40,52 @@ describe('buildSections (all tab)', () => {
     const out = buildSections(dup, { in: true, one: true, cc: false }, [], '', 'all');
     const all = out.flatMap((s) => s.data);
     expect(all).toHaveLength(1);
-    expect(all[0].name).toBe('first');
+    expect(all[0].primary.name).toBe('first');
   });
 
   it('filters by query against search and slug', () => {
     const out = buildSections(lists, enabled, [], 'b', 'all');
-    expect(out.flatMap((s) => s.data.map((a) => a.slug))).toEqual(['b']);
+    expect(out.flatMap((s) => s.data.map((g) => g.primary.slug))).toEqual(['b']);
+  });
+
+  it('groups same-name across sources into one row (primary = has real year)', () => {
+    // 天命: anime1.cc(有年份) + gimytv/gimytw(其他);天命動漫 應併入天命
+    const lists2 = {
+      cc: [anime('tm', '2026', '天命', 'https://anime1.cc')],
+      gimytv: [anime('999', '其他', '天命動漫', 'https://gimytv.biz')],
+      gimytw: [anime('888', '其他', '天命', 'https://gimytw.net')],
+    };
+    const en = { cc: true, gimytv: true, gimytw: true } as any;
+    const out = buildSections(lists2, en, [], '', 'all');
+    // 應該歸入 2026 組(primary 有年份),一個 group,三個來源
+    const yr = out.find((s) => s.title === '2026 年更新')!;
+    expect(yr.data).toHaveLength(1);
+    expect(yr.data[0].primary.name).toBe('天命');
+    expect(yr.data[0].primary.site).toBe('https://anime1.cc');
+    expect(yr.data[0].sources).toHaveLength(3);
+  });
+});
+
+describe('normalizeName + groupAnimes', () => {
+  it('strips 動漫/動畫/空白 suffix so 天命動漫 == 天命', () => {
+    expect(normalizeName('天命動漫')).toBe('天命');
+    expect(normalizeName('天命 動畫')).toBe('天命');
+    expect(normalizeName('天命')).toBe('天命');
+  });
+
+  it('groups by normalized name, primary prefers real year', () => {
+    const g = groupAnimes([
+      anime('999', '其他', '天命動漫', 'https://gimytv.biz'),
+      anime('tm', '2026', '天命', 'https://anime1.cc'),
+    ]);
+    expect(g).toHaveLength(1);
+    expect(g[0].primary.site).toBe('https://anime1.cc');
+    expect(g[0].sources).toHaveLength(2);
+  });
+
+  it('keeps genuinely different names apart', () => {
+    const g = groupAnimes([anime('a', '2026', '天命'), anime('b', '2026', '吞噬星空')]);
+    expect(g).toHaveLength(2);
   });
 });
 

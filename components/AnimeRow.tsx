@@ -1,50 +1,75 @@
 import { Pressable, Text, View } from 'react-native';
 import { type Anime, SITES } from '../lib/anime1';
+import { type AnimeGroup } from '../lib/catalog';
 import { favKey } from '../lib/format';
 import { type SiteKey } from '../lib/types';
 import { s } from '../styles';
 
-// 側欄清單一行：片名 + 集數/更新/來源站 + 心心收藏。純展示 + 回呼。
+/** 來源短名:anime1 family → anime1.<k>;其他站 → 直接 key（gimyplus…）。 */
+function siteShort(site: string): string {
+  const k = (Object.keys(SITES) as SiteKey[]).find((kk) => SITES[kk] === site);
+  if (!k) return site;
+  return k.startsWith('gimy') ? k : 'anime1.' + k;
+}
+
+// 側欄清單一行：同名跨來源併成一行，片名 + 每個來源一粒可撳 chip + 心心收藏。
 export default function AnimeRow({
-  item,
-  fav,
-  active,
+  group,
+  favOf,
+  activeOf,
   onOpen,
   onToggleFav,
   focusProps,
   focused,
 }: {
-  item: Anime;
-  fav: boolean;
-  active: boolean;
-  onOpen: () => void;
-  onToggleFav: () => void;
+  group: AnimeGroup;
+  favOf: (a: Anime) => boolean;
+  activeOf: (a: Anime) => boolean;
+  onOpen: (a: Anime) => void;
+  onToggleFav: (g: AnimeGroup) => void;
   focusProps: (id: string) => any;
   focused: (id: string) => any;
 }) {
-  const k = favKey(item);
-  // 顯示來源站台（合併清單會混入兩站，標籤分得清）
-  const siteTag = (Object.keys(SITES) as SiteKey[]).find((kk) => SITES[kk] === item.site);
+  const { primary, sources } = group;
+  const hasActive = sources.some(activeOf);
+  const pk = favKey(primary);
+  const fav = sources.some(favOf); // 任何來源收藏 = 成組當收藏
   return (
-    <View style={[s.row, active && s.rowActive]}>
+    <View style={[s.row, hasActive && s.rowActive]}>
+      <View style={s.rowMain}>
+        <Pressable
+          {...focusProps('row-' + pk)}
+          style={focused('row-' + pk) && s.rowFocused}
+          onPress={() => onOpen(primary)}>
+          <Text style={[s.rowName, hasActive && s.rowNameActive]} numberOfLines={1}>
+            {hasActive ? '● ' : ''}
+            {primary.name}
+          </Text>
+        </Pressable>
+        <View style={s.rowSrcWrap}>
+          {sources.map((src) => {
+            const sk = favKey(src);
+            const on = activeOf(src);
+            return (
+              <Pressable
+                key={sk}
+                {...focusProps('src-' + sk)}
+                style={[s.rowSrcChip, on && s.rowSrcChipOn, focused('src-' + sk)]}
+                onPress={() => onOpen(src)}>
+                <Text style={[s.rowSrcText, on && s.rowSrcTextOn]} numberOfLines={1}>
+                  {src.cntText ? src.cntText + ' · ' : ''}
+                  {siteShort(src.site)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
       <Pressable
-        {...focusProps('row-' + k)}
-        style={[s.rowMain, focused('row-' + k) && s.rowFocused]}
-        onPress={onOpen}>
-        <Text style={[s.rowName, active && s.rowNameActive]} numberOfLines={1}>
-          {active ? '● ' : ''}
-          {item.name}
-        </Text>
-        <Text style={s.rowMeta} numberOfLines={1}>
-          <Text style={s.rowLive}>{item.cntText}</Text> · {item.update}
-          {siteTag ? <Text style={s.rowSite}>{'  ·  anime1.' + siteTag}</Text> : null}
-        </Text>
-      </Pressable>
-      <Pressable
-        {...focusProps('heart-' + k)}
+        {...focusProps('heart-' + pk)}
         hitSlop={8}
-        style={[s.heart, focused('heart-' + k)]}
-        onPress={onToggleFav}>
+        style={[s.heart, focused('heart-' + pk)]}
+        onPress={() => onToggleFav(group)}>
         <Text style={[s.heartIcon, fav && s.heartOn]}>{fav ? '♥' : '♡'}</Text>
       </Pressable>
     </View>
