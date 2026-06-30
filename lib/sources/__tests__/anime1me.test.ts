@@ -4,6 +4,7 @@ import {
   parseApireq,
   parseAdjacent,
   parseApiSource,
+  parseSetCookiePairs,
   episodeNoFromTitle,
   anime1meProvider,
   SITE,
@@ -97,6 +98,34 @@ describe('parseApiSource', () => {
   it('returns null on error shape', () => {
     expect(parseApiSource({ success: false })).toBeNull();
     expect(parseApiSource(null)).toBeNull();
+  });
+});
+
+describe('parseSetCookiePairs', () => {
+  // 主路:expo/fetch _rawHeaders = [name,value][],重複 set-cookie 各自一條
+  it('reads e/p/h from _rawHeaders (duplicates preserved), JWT-with-dots intact', () => {
+    const resp = {
+      _rawHeaders: [
+        ['content-type', 'application/json'],
+        ['set-cookie', 'e=1782826381; expires=Tue, 30 Jun 2026 13:33:01 GMT; Max-Age=28799; path=/1901/1.mp4; domain=.v.anime1.me; secure; HttpOnly'],
+        ['Set-Cookie', 'p=eyJpc3MiOiJhbmltZTEubWU.abc-_def; Max-Age=28799; path=/1901/1.mp4; domain=.v.anime1.me; secure; HttpOnly'],
+        ['set-cookie', 'h=ui04ZJ9kPgO259WE3D1kww; Max-Age=28799; path=/1901/1.mp4; domain=.v.anime1.me; secure; HttpOnly'],
+      ],
+    };
+    expect(parseSetCookiePairs(resp)).toBe('e=1782826381; p=eyJpc3MiOiJhbmltZTEubWU.abc-_def; h=ui04ZJ9kPgO259WE3D1kww');
+  });
+
+  // 後備:whatwg-fetch Headers.get 會用 ", " 合併（本站用 Max-Age 冇逗號,可安全切）
+  it('falls back to comma-joined headers.get when _rawHeaders absent', () => {
+    const merged =
+      'e=1782826381; Max-Age=28799; path=/1901/1.mp4, p=eyJ.abc.def; Max-Age=28799; path=/1901/1.mp4, h=xyz123; Max-Age=28799; path=/1901/1.mp4';
+    const resp = { headers: { get: (k: string) => (k.toLowerCase() === 'set-cookie' ? merged : null) } };
+    expect(parseSetCookiePairs(resp)).toBe('e=1782826381; p=eyJ.abc.def; h=xyz123');
+  });
+
+  it('returns empty string when no e/p/h cookies present', () => {
+    expect(parseSetCookiePairs({ _rawHeaders: [['x-foo', 'bar']] })).toBe('');
+    expect(parseSetCookiePairs({})).toBe('');
   });
 });
 

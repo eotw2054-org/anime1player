@@ -616,16 +616,20 @@ export default function App() {
 
   async function loadStream(streams: Current['streams'], idx: number, anime: Anime): Promise<boolean> {
     const provider = getProvider(anime);
-    const src = await provider.resolveStream(streams[idx].embedUrl);
+    const resolved = await provider.resolveStream(streams[idx].embedUrl);
+    const src = typeof resolved === 'string' ? resolved : resolved?.url ?? null;
+    // provider 可附帶播放 headers（例 anime1.me 嘅 CDN Cookie，唔加 mp4 會 403）
+    const extraHeaders = resolved && typeof resolved !== 'string' ? resolved.headers ?? {} : {};
     if (!isPlayable(src)) return false;
     let referer = '';
     try {
       referer = new URL(streams[idx].embedUrl).origin + '/';
     } catch (e) { if (__DEV__) console.warn(e); }
+    const headers = { 'User-Agent': UA, Referer: referer, ...extraHeaders };
     const source: VideoSource = {
       uri: src!,
       contentType: src!.includes('.m3u8') ? 'hls' : 'auto',
-      headers: { 'User-Agent': UA, Referer: referer },
+      headers,
     };
     seekedRef.current = false; // 新來源 → 容許一次初始 seek
     endFiredRef.current = false; // 新來源 → 重置 End 觸發
@@ -636,7 +640,7 @@ export default function App() {
     if (src!.includes('.m3u8')) {
       // 廣告偵測係 provider 嘅 optional capability：冇實作就唔跳（唔會誤跳真內容）
       (provider.adDetector
-        ? provider.adDetector(src!, { 'User-Agent': UA, Referer: referer })
+        ? provider.adDetector(src!, headers)
         : Promise.resolve([])
       )
         .then((ranges) => {

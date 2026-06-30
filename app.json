@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 新增 anime1.me 來源(正源、最齊全)—— 喺「設定 → 影片來源」可揀,自動隱藏 18+ 內容。\n• ⚠️ 重點 smoke test:由 anime1.me 揀片→要播得到、上/下集、跳廣告;鏡像(in/one/cc)照舊運作。\n• 播唔到(尤其 anime1.me)即刻回報 —— 最大未知係 cookie/referer 喺手機行唔行得通,要實機先確認到。"
+      "releaseNotes": "• 修正 anime1.me 播放:之前 mp4 一律 403 播唔到,因為 CDN 需要 /api 派嘅 e/p/h cookie。而家 resolveStream 會讀返呢三個 cookie,經 VideoSource 嘅 Cookie header 傳俾播放器。\n• ⚠️ 重點 smoke test:由 anime1.me 揀片 → 要真係播到(206)、上/下集、拖進度;鏡像(in/one/cc)照舊。\n• 播唔到請回報 —— 多 agent 查證咗 expo-video 會把 Cookie header 傳落 ExoPlayer,但實機先 100% 肯定。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
