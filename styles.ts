@@ -92,9 +92,10 @@ export const s = StyleSheet.create({
   rowMeta: { color: C.muted, fontSize: 11, marginTop: 1 },
   rowSite: { color: C.cyan, fontWeight: '800' },
   rowLive: { color: C.good, fontStyle: 'italic' },
-  // 同名分組:每個來源一粒可撳 chip
-  rowSrcWrap: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 3 },
-  rowSrcChip: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: C.line2, backgroundColor: C.surface, marginRight: 6, marginTop: 3 },
+  // 同名分組:每個來源一粒可撳 chip（單行橫向拖動,唔換行）
+  rowSrcRow: { marginTop: 4 },
+  rowSrcRowContent: { flexDirection: 'row', alignItems: 'center', paddingRight: 8 },
+  rowSrcChip: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: C.line2, backgroundColor: C.surface, marginRight: 6 },
   rowSrcChipOn: { borderColor: 'rgba(52,225,232,0.55)', backgroundColor: 'rgba(52,225,232,0.12)' },
   rowSrcText: { color: C.muted, fontSize: 11 },
   rowSrcTextOn: { color: C.cyan, fontWeight: '700' },
