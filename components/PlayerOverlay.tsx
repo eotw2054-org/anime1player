@@ -46,13 +46,13 @@ export default function PlayerOverlay(props: {
     try {
       t = player.currentTime || 0;
       d = player.duration || 0;
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     setPos({ t, d });
   });
   useEventListener(player, 'playingChange', () => {
     try {
       setPlaying(player.playing);
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
   });
 
   const pan = useRef(
@@ -81,7 +81,7 @@ export default function PlayerOverlay(props: {
         const ratio = w > 0 ? Math.min(1, Math.max(0, x / w)) : 0;
         try {
           player.currentTime = ratio * (player.duration || 0);
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
         dragRef.current = null;
         setDrag(null);
         showControls();
@@ -95,14 +95,14 @@ export default function PlayerOverlay(props: {
   const seekBy = (n: number) => {
     try {
       player.currentTime = Math.max(0, (player.currentTime || 0) + n);
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     showControls();
   };
   const togglePlay = () => {
     try {
       if (player.playing) player.pause();
       else player.play();
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     showControls();
   };
 

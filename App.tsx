@@ -142,7 +142,7 @@ export default function App() {
             ? ScreenOrientation.OrientationLock.LANDSCAPE
             : ScreenOrientation.OrientationLock.PORTRAIT_UP
         );
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn(e); }
     })();
   }, [fullscreen]);
   const setSrcHiBoth = (i: number) => {
@@ -166,7 +166,7 @@ export default function App() {
         if (up != null) props.nextFocusUp = up;
         try {
           node.setNativeProps(props);
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
       });
     }, 60);
     return () => clearTimeout(id);
@@ -243,13 +243,13 @@ export default function App() {
           // 切來源／續看：seek 返到指定秒數
           try {
             player.currentTime = resumeAtRef.current;
-          } catch {}
+          } catch (e) { if (__DEV__) console.warn(e); }
           resumeAtRef.current = null;
         } else if (startAtRef.current != null && startAtRef.current > 0) {
           // 逐套開頭：跳過片頭（取代舊全域跳秒）
           try {
             player.currentTime = startAtRef.current;
-          } catch {}
+          } catch (e) { if (__DEV__) console.warn(e); }
         }
         startAtRef.current = null;
       }
@@ -263,7 +263,7 @@ export default function App() {
     if (roleRef.current === 'remote') {
       try {
         if (player.playing) player.pause();
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn(e); }
       return;
     }
     const c = currentRef.current;
@@ -271,14 +271,14 @@ export default function App() {
     let t = 0;
     try {
       t = player.currentTime || 0;
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     // 自動跳過廣告：currentTime 落入偵測到嘅廣告區間 → 跳去區間結尾
     if (adRangesRef.current.length) {
       const target = adSkipTarget(t, adRangesRef.current);
       if (target != null) {
         try {
           player.currentTime = target;
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
         t = target;
         setAdSkipNote(true);
         if (adNoteTimer.current) clearTimeout(adNoteTimer.current);
@@ -378,7 +378,7 @@ export default function App() {
             marksRef.current = parsed;
             setMarks(parsed);
           }
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
       }
       if (esites) {
         try {
@@ -387,7 +387,7 @@ export default function App() {
           setEnabledSites(
             Object.fromEntries(Object.keys(SITES).map((k) => [k, saved[k] ?? true]))
           );
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
       }
       if (fop === '1') setFsOnPlay(true);
       if (ab === '1') setAutoBest(true);
@@ -396,7 +396,7 @@ export default function App() {
       if (prog) {
         try {
           progressRef.current = JSON.parse(prog);
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
       }
       // favAll（新格式,含 tombstone）優先;冇就由舊 'favorites' array migrate(每個補 at）
       try {
@@ -406,7 +406,7 @@ export default function App() {
           const old = JSON.parse(fav);
           applyFavAll(Array.isArray(old) ? old.map((a: any) => ({ ...a, at: Date.now() })) : []);
         }
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn(e); }
       // 已登入 → 開 app 即刻拉一次雲端最新，merge 落本機
       if (sUser && sToken) {
         try {
@@ -464,7 +464,7 @@ export default function App() {
           hadCache = true;
         }
       }
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     // 冇快取先轉圈；有快取就背景靜靜更新
     if (!hadCache) setLoadingList(true);
     setListError(null);
@@ -609,7 +609,7 @@ export default function App() {
         try {
           await withTimeout(fetch(st.embedUrl, { headers: { 'User-Agent': UA } }), 6000);
           ms = Date.now() - t0;
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
         return { ...st, ms };
       })
     );
@@ -641,7 +641,7 @@ export default function App() {
       if (best && best.ms !== Infinity && best.label !== curLabel) {
         try {
           resumeAtRef.current = player.currentTime;
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
         const ok = await loadStream(timed, 0);
         preferredRef.current = best.label; // 同套之後嘅 chapter 沿用
         if (!ok) setPlayError('最佳來源無法播放，試下手動切換');
@@ -662,7 +662,7 @@ export default function App() {
     let referer = '';
     try {
       referer = new URL(streams[idx].embedUrl).origin + '/';
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     const source: VideoSource = {
       uri: src!,
       contentType: src!.includes('.m3u8') ? 'hls' : 'auto',
@@ -693,7 +693,7 @@ export default function App() {
     // 切來源前記低目前秒數，新來源 ready 後 seek 返
     try {
       resumeAtRef.current = player.currentTime;
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     // 記住用戶揀嘅來源（用 label 配對，下一集沿用）
     const label = cur.streams[idx]?.label ?? null;
     setPreferredLabel(label);
@@ -918,7 +918,7 @@ export default function App() {
     if (ws && ws.readyState === 1) {
       try {
         ws.send(JSON.stringify({ ...obj, from: deviceIdRef.current }));
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn(e); }
     }
   };
   const sendHello = () => {
@@ -929,7 +929,7 @@ export default function App() {
         roleRef.current === 'player' && !allowRemoteRef.current ? 'player_locked' : roleRef.current;
       try {
         ws.send(JSON.stringify({ type: 'hello', deviceId: deviceIdRef.current, name: deviceName, role: annRole }));
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn(e); }
     }
   };
   // 播放器：broadcast now-playing 俾遙控器
@@ -944,7 +944,7 @@ export default function App() {
       position = player.currentTime || 0;
       duration = player.duration || 0;
       playing = player.playing;
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     lastStateSentRef.current = Date.now();
     wsSend({
       type: 'state',
@@ -1002,7 +1002,7 @@ export default function App() {
           }
           break;
       }
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     setTimeout(broadcastState, 300); // 執行後即刻回報新狀態
   };
   // 遙控器：揀片 → 叫投影機播（唔喺手機播）
@@ -1023,7 +1023,7 @@ export default function App() {
     if (role === 'remote') {
       try {
         player.pause();
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn(e); }
     }
   }, [role, deviceName, allowRemote]);
 
@@ -1092,7 +1092,7 @@ export default function App() {
       ws.onerror = () => {
         try {
           ws?.close();
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
       };
     };
     const scheduleRetry = () => {
@@ -1119,7 +1119,7 @@ export default function App() {
       sub.remove();
       try {
         ws?.close();
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn(e); }
       wsRef.current = null;
     };
   }, [syncUser]);
@@ -1135,7 +1135,7 @@ export default function App() {
         // 確保 bundle 已下載（native CHECK_ON_LAUNCH=ALWAYS 可能已搶先下載，呢個 idempotent）
         try {
           await Updates.fetchUpdateAsync();
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn(e); }
         // 判斷彈唔彈用 isAvailable，唔好 gate 喺 fetched.isNew —— 否則 native 搶先下載令 isNew=false 就唔彈
         const m: any = (res as any).manifest;
         const notes = m?.extra?.expoClient?.extra?.releaseNotes;
@@ -1176,7 +1176,7 @@ export default function App() {
     let tt = NaN;
     try {
       tt = player.currentTime;
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn(e); }
     if (!isFinite(tt)) return;
     saveMarks(setMark(marksRef.current, favKey(c.anime), field, tt, Date.now()));
     showControls();
@@ -1245,7 +1245,7 @@ export default function App() {
         } else if (name === 'right') {
           player.currentTime = player.currentTime + 10;
         }
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn(e); }
     });
     return () => sub.remove();
   }, []);
@@ -1424,7 +1424,7 @@ export default function App() {
       setFullscreen(false);
       try {
         player.pause(); // 遙控器唔本機播,收聲
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn(e); }
     }
   };
   const roleToggle = (
