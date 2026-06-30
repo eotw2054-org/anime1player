@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• Gimy 改用 config-driven provider,一次過支援 4 個鏡像:Gimy+(主)、GimyTV、GimyPro、GimyTW。預設開「Gimy+（動漫·主）」,其餘做後備(設定可開)。\n• 自動揀直接 m3u8 線路、跳過播唔到嘅外部源(騰訊/愛奇藝…)。\n• ⚠️ smoke test:揀「Gimy+（動漫·主）」嘅片 → 要播到、上/下集;anime1 全部照舊。播唔到請回報。"
+      "releaseNotes": "• 修正 Gimy+ 播放:之前所有片源「無法解析」—— 佢把 parser-only 線路扮成「4K/藍光」高清,而家改用『解到先揀』,自動揀到真 m3u8 線路(實測 6/6 套播到)。\n• 新增「分流選擇」:有多條線路時喺選集上面揀,切去就重播該線路(揀錯預設都可手動切)。\n• 移除 GimyPro(分類路徑失效);保留 Gimy+(主)/GimyTV/GimyTW。\n• ⚠️ smoke test:Gimy+ 揀片要播到、切分流、上/下集;anime1 照舊。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

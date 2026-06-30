@@ -40,6 +40,7 @@ import { type SiteKey, type Tab, type Chapter, type Current, type Progress, type
 import { UA, favKey } from './lib/format';
 import { setMark, clearMark } from './lib/marks';
 import { buildSections, buildEpBuckets } from './lib/catalog';
+import { type PlayLine } from './lib/sources/types';
 import { favMapFromArray, activeFavorites, toggleFavEntry } from './lib/favorites';
 import PlayerOverlay from './components/PlayerOverlay';
 import EpisodeGrid from './components/EpisodeGrid';
@@ -76,6 +77,8 @@ export default function App() {
 
   const [selected, setSelected] = useState<Anime | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [lines, setLines] = useState<PlayLine[]>([]); // 分流（線路）；>1 先顯示選擇器
+  const [lineIndex, setLineIndex] = useState(0);
   const [loadingChapters, setLoadingChapters] = useState(false);
 
   const [current, setCurrent] = useState<Current | null>(null);
@@ -495,16 +498,37 @@ export default function App() {
       }
     };
     setLoadingChapters(true);
+    setLines([]);
+    setLineIndex(0);
     try {
-      const lines = await getProvider(a).getEpisodes(a);
-      const chapters = lines[0]?.episodes ?? [{ ep: 1, url: a.latestUrl }];
+      const fetched = await getProvider(a).getEpisodes(a);
+      const chapters = fetched[0]?.episodes ?? [{ ep: 1, url: a.latestUrl }];
+      setLines(fetched);
       setChapters(chapters);
       playFirst(chapters[0]?.url);
     } catch {
+      setLines([]);
       setChapters([{ ep: 1, url: a.latestUrl }]);
       playFirst(a.latestUrl);
     } finally {
       setLoadingChapters(false);
+    }
+  }
+
+  // 分流（線路）切換：換去另一條線路,盡量留喺同一集,否則由第一集開始。
+  function switchLine(idx: number) {
+    const ln = lines[idx];
+    if (!ln || !ln.episodes.length) return;
+    setLineIndex(idx);
+    setChapters(ln.episodes);
+    const curNo = currentRef.current?.episodeNo;
+    const target = (curNo && ln.episodes.find((e) => String(e.ep) === String(curNo))) || ln.episodes[0];
+    const anime = currentRef.current?.anime ?? selected ?? undefined;
+    if (roleRef.current === 'remote' && anime) {
+      remotePlay(target.url, anime);
+    } else {
+      resumeAtRef.current = null;
+      playEpisode(target.url, anime);
     }
   }
 
@@ -1419,6 +1443,31 @@ export default function App() {
     />
   );
 
+  // 分流（線路）選擇器：>1 條先顯示（單線路如 anime1 / 去重後嘅 gimytv 唔出）
+  const lineTabs = lines.length > 1 && (
+    <FlatList
+      style={s.rangeRow}
+      data={lines}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      keyExtractor={(l, i) => l.label + '-' + i}
+      extraData={[lineIndex, focusKey]}
+      renderItem={({ item, index }) => {
+        const on = index === lineIndex;
+        return (
+          <Pressable
+            {...focusProps('line-' + index)}
+            style={[s.range, on && s.rangeOn, focused('line-' + index)]}
+            onPress={() => switchLine(index)}>
+            <Text style={[s.rangeText, on && s.rangeTextOn]} numberOfLines={1}>
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      }}
+    />
+  );
+
   const epGridInner = (
     <EpisodeGrid
       chapters={visibleChapters}
@@ -1923,6 +1972,7 @@ export default function App() {
         {selected && (
           <View style={s.rightRail}>
             {pickerHeader}
+            {lineTabs}
             {rangeTabs}
             {loadingChapters ? (
               <ActivityIndicator color={C.cyan} style={{ marginTop: 16 }} />
@@ -2018,6 +2068,7 @@ export default function App() {
       {/* 固定控制區：揀咗動畫時鎖喺頂，唔跟清單向上捲；可用「收起 / 顯示」手動收合 */}
       {selected && panelOpen && (
         <View style={s.lockedControls}>
+          {lineTabs}
           {rangeTabs}
           {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridPort}
         </View>

@@ -116,26 +116,46 @@ export function parseEpisodes(html: string, profile: MacCmsProfile, base: string
       lines.push({ label: label || '線路', episodes: eps });
     }
   }
+  // 去重：profile A 多條線路 strip #sid 後集數一模一樣 → 收埋做一條（免「分流選擇」出一堆「預設」）
+  const uniq: PlayLine[] = [];
+  const seenSig = new Set<string>();
+  for (const ln of lines) {
+    const sig = `${ln.episodes[0]?.url}|${ln.episodes.length}|${ln.episodes[ln.episodes.length - 1]?.url}`;
+    if (seenSig.has(sig)) continue;
+    seenSig.add(sig);
+    uniq.push(ln);
+  }
   // 外部源（qq/愛奇藝…播唔到）排後 → lines[0] 係可播 m3u8 線路
-  lines.sort((a, b) => (EXTERNAL_SOURCE.test(a.label) ? 1 : 0) - (EXTERNAL_SOURCE.test(b.label) ? 1 : 0));
-  return lines;
+  uniq.sort((a, b) => (EXTERNAL_SOURCE.test(a.label) ? 1 : 0) - (EXTERNAL_SOURCE.test(b.label) ? 1 : 0));
+  return uniq;
 }
 
-// ---------- player_aaaa（兩個 profile 共用）----------
-export function extractPlayerConfig(html: string): any | null {
-  const i = html.indexOf('player_aaaa');
-  if (i < 0) return null;
-  const start = html.indexOf('{', i);
-  if (start < 0) return null;
-  let depth = 0;
-  let end = -1;
-  for (let j = start; j < html.length; j++) {
-    const c = html[j];
-    if (c === '{') depth++;
-    else if (c === '}') { if (--depth === 0) { end = j + 1; break; } }
+// ---------- player config（profile A 用 player_aaaa,profile B 用 player_data）----------
+/** 試齊已知 player 變數名,brace-match 抽 JSON,回第一個有 `url` 嘅。 */
+export function extractPlayerConfig(html: string, varNames: string[] = ['player_aaaa', 'player_data']): any | null {
+  for (const v of varNames) {
+    let from = 0;
+    while (true) {
+      const at = html.indexOf(v, from);
+      if (at < 0) break;
+      from = at + v.length;
+      const start = html.indexOf('{', at);
+      if (start < 0) break;
+      let depth = 0;
+      let end = -1;
+      for (let j = start; j < html.length; j++) {
+        const c = html[j];
+        if (c === '{') depth++;
+        else if (c === '}') { if (--depth === 0) { end = j + 1; break; } }
+      }
+      if (end < 0) break;
+      try {
+        const parsed = JSON.parse(html.slice(start, end));
+        if (parsed && typeof parsed === 'object' && 'url' in parsed) return parsed;
+      } catch { /* try next occurrence / var */ }
+    }
   }
-  if (end < 0) return null;
-  try { return JSON.parse(html.slice(start, end)); } catch { return null; }
+  return null;
 }
 
 /** 按 encrypt 解 player url：0 原樣 / 1 urldecode / 2 base64(→urldecode)。 */
@@ -149,6 +169,39 @@ export function decodePlayUrl(url: string, encrypt: any): string {
     }
   } catch (err) { if (__DEV__) console.warn(err); }
   return url;
+}
+
+/** 真‧可直接播：http(s) + .m3u8/.mp4/.webm。排除 parser-only token（JD-…/NS-…）。 */
+export function isDirectPlayable(u: string | null): boolean {
+  return !!u && /^https?:/i.test(u) && (u.includes('.m3u8') || /\.(mp4|webm)(\?|$)/.test(u));
+}
+
+/** 解一條集數頁 → 直接播放網址（resolveStream + 探測共用）。 */
+async function resolvePlayUrl(epUrl: string, base: string): Promise<string | null> {
+  const html = await fetchHtml(epUrl, base);
+  const c = extractPlayerConfig(html);
+  if (!c?.url) return null;
+  return decodePlayUrl(String(c.url), c.encrypt);
+}
+
+/**
+ * 揀第一條「解到真 m3u8」嘅線路做預設。
+ * gimyplus 把 parser-only 線路扮成「4K/藍光」高清,label 呃唔到 → 必須靠解析後嘅 url shape。
+ * 並行探測頭幾條(每條第一集),揀返原順序最前嗰條 playable 嘅,擺去 lines[0]。
+ */
+async function pickPlayableFirst(lines: PlayLine[], base: string): Promise<PlayLine[]> {
+  if (lines.length <= 1) return lines;
+  const cap = 6;
+  const cand = lines.slice(0, cap);
+  const checks = await Promise.all(
+    cand.map(async (ln) => {
+      try { return isDirectPlayable(await resolvePlayUrl(ln.episodes[0]?.url, base)); }
+      catch { return false; }
+    })
+  );
+  const idx = checks.findIndex(Boolean);
+  if (idx > 0) { const [good] = lines.splice(idx, 1); lines.unshift(good); }
+  return lines;
 }
 
 // ---------- 工廠 ----------
@@ -178,7 +231,8 @@ export function createMacCmsProvider(cfg: MacCmsConfig): SourceProvider {
     async getEpisodes(a: Anime): Promise<PlayLine[]> {
       const html = await fetchHtml(`${base}${profile.detailPrefix}/${a.slug}.html`, base);
       const lines = parseEpisodes(html, profile, base);
-      return lines.length ? lines : [{ label: '預設', episodes: [{ ep: 1, url: a.latestUrl }] }];
+      if (!lines.length) return [{ label: '預設', episodes: [{ ep: 1, url: a.latestUrl }] }];
+      return pickPlayableFirst(lines, base); // 預設線路揀「解到真 m3u8」嗰條（label 呃唔到）
     },
 
     async getEpisode(url: string) {
@@ -199,20 +253,17 @@ export function createMacCmsProvider(cfg: MacCmsConfig): SourceProvider {
     },
 
     async resolveStream(embedUrl: string): Promise<string | null> {
-      const html = await fetchHtml(embedUrl, base);
-      const c = extractPlayerConfig(html);
-      if (!c?.url) return null;
-      return decodePlayUrl(String(c.url), c.encrypt);
+      return resolvePlayUrl(embedUrl, base);
     },
     // adDetector 唔設：CDN 同 anime1 唔同。
   };
 }
 
 // ---------- Gimy 鏡像 configs（gimyplus 做主）----------
+// 註:gimypro.com 分類路由同 gimyplus 唔同(/show /type /vodshow 全 404),暫時唔收;搵到正確路徑先加返。
 export const GIMY_CONFIGS: MacCmsConfig[] = [
   { id: 'gimyplus', label: 'Gimy+（動漫·主）', base: 'https://gimyplus.com', animeType: 4, profile: 'B' },
   { id: 'gimytv', label: 'GimyTV（動漫）', base: 'https://gimytv.biz', animeType: 4, profile: 'A' },
-  { id: 'gimypro', label: 'GimyPro（動漫）', base: 'https://gimypro.com', animeType: 4, profile: 'B' },
   { id: 'gimytw', label: 'GimyTW（動漫）', base: 'https://gimytw.net', animeType: 4, profile: 'A' },
 ];
 

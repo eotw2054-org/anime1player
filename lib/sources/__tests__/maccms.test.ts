@@ -3,6 +3,7 @@ import {
   parseEpisodes,
   extractPlayerConfig,
   decodePlayUrl,
+  isDirectPlayable,
   EXTERNAL_SOURCE,
   PROFILE_A,
   PROFILE_B,
@@ -60,6 +61,19 @@ describe('parseEpisodes — profile B (multi-line, external sorted last)', () =>
   });
 });
 
+describe('isDirectPlayable (line-pick by resolvability, not label)', () => {
+  it('accepts real http m3u8/mp4', () => {
+    expect(isDirectPlayable('https://play.xluuss.com/a/index.m3u8')).toBe(true);
+    expect(isDirectPlayable('https://x/a.mp4')).toBe(true);
+  });
+  it('rejects gimyplus parser-only tokens + empties', () => {
+    expect(isDirectPlayable('JD-e7ef69b1fb252354')).toBe(false); // 4K畫質線路 token
+    expect(isDirectPlayable('NSYS-2ff4e382')).toBe(false);
+    expect(isDirectPlayable('')).toBe(false);
+    expect(isDirectPlayable(null)).toBe(false);
+  });
+});
+
 describe('EXTERNAL_SOURCE', () => {
   it('flags external (unplayable) source labels', () => {
     expect(EXTERNAL_SOURCE.test('騰訊線路')).toBe(true);
@@ -69,11 +83,17 @@ describe('EXTERNAL_SOURCE', () => {
 });
 
 describe('extractPlayerConfig + decodePlayUrl (shared)', () => {
-  it('brace-matches nested player_aaaa and unescapes url', () => {
+  it('brace-matches nested player_aaaa (profile A) and unescapes url', () => {
     const html = `<script>var player_aaaa={"encrypt":0,"vod_data":{"vod_name":"x"},"url":"https:\\/\\/play.modujx10.com\\/a\\/index.m3u8","from":"modum3u8"};</script>`;
     const cfg = extractPlayerConfig(html);
     expect(cfg.url).toBe('https://play.modujx10.com/a/index.m3u8');
     expect(cfg.encrypt).toBe(0);
+  });
+  it('also reads player_data (profile B / gimyplus)', () => {
+    const html = `<script>var player_data={"flag":"play","encrypt":0,"link_next":"\\/ep\\/1-2-1.html","vod_data":{"vod_name":"x"},"url":"https:\\/\\/play.xluuss.com\\/a\\/index.m3u8","from":"xlm3u8"};</script>`;
+    const cfg = extractPlayerConfig(html);
+    expect(cfg.url).toBe('https://play.xluuss.com/a/index.m3u8');
+    expect(cfg.from).toBe('xlm3u8');
   });
   it('decodes encrypt 0/1', () => {
     expect(decodePlayUrl('https://x/a.m3u8', 0)).toBe('https://x/a.m3u8');
@@ -85,7 +105,6 @@ describe('registry routing — 4 gimy mirrors + 2 profiles', () => {
   it('matchGimyProvider maps each domain to its provider id', () => {
     expect(matchGimyProvider('https://gimyplus.com')?.id).toBe('gimyplus');
     expect(matchGimyProvider('https://gimytv.biz')?.id).toBe('gimytv');
-    expect(matchGimyProvider('https://gimypro.com')?.id).toBe('gimypro');
     expect(matchGimyProvider('https://gimytw.net')?.id).toBe('gimytw');
     expect(matchGimyProvider('https://anime1.in')).toBeNull();
   });
@@ -95,8 +114,8 @@ describe('registry routing — 4 gimy mirrors + 2 profiles', () => {
     expect(getProviderBySite('https://anime1.me').id).toBe('anime1me');
     expect(getProviderBySite('https://anime1.in').id).toBe('anime1');
   });
-  it('registers all 4 gimy providers (2 profile A, 2 profile B)', () => {
-    expect(gimyProviders.map((g) => g.cfg.id).sort()).toEqual(['gimyplus', 'gimypro', 'gimytv', 'gimytw']);
+  it('registers the active gimy providers (gimyplus B, gimytv/gimytw A)', () => {
+    expect(gimyProviders.map((g) => g.cfg.id).sort()).toEqual(['gimyplus', 'gimytv', 'gimytw']);
     expect(gimyProviders.every((g) => typeof g.provider.resolveStream === 'function')).toBe(true);
   });
 });
