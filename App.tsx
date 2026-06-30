@@ -53,6 +53,7 @@ import { setMark, clearMark } from './lib/marks';
 import { buildSections, buildEpBuckets } from './lib/catalog';
 import { favMapFromArray, activeFavorites, toggleFavEntry } from './lib/favorites';
 import PlayerOverlay from './components/PlayerOverlay';
+import EpisodeGrid from './components/EpisodeGrid';
 
 export default function App() {
   const { width, height } = useWindowDimensions();
@@ -1521,22 +1522,15 @@ export default function App() {
   );
 
   const epGridInner = (
-    <View style={s.epWrap} onLayout={(e) => setGridW(e.nativeEvent.layout.width)}>
-      {visibleChapters.map((item) => {
-        const on = current?.episodeUrl === item.url;
-        return (
-          <Pressable
-            key={item.url}
-            {...focusProps('ep-' + item.url)}
-            style={[s.ep, { width: epItemW || undefined }, on && s.epOn, focused('ep-' + item.url)]}
-            onPress={() => (role === 'remote' && selected ? remotePlay(item.url, selected) : playEpisode(item.url))}>
-            <Text style={[s.epText, on && s.epTextOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-              {item.ep}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <EpisodeGrid
+      chapters={visibleChapters}
+      currentUrl={current?.episodeUrl}
+      itemWidth={epItemW}
+      onLayout={setGridW}
+      onPlay={(url) => (role === 'remote' && selected ? remotePlay(url, selected) : playEpisode(url))}
+      focusProps={focusProps}
+      focused={focused}
+    />
   );
 
   // 打直版：集格最多 3 行，多過就喺格仔區內部捲（唔撐長成個 page）
