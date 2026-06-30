@@ -2,6 +2,7 @@
 import { parse } from 'node-html-parser';
 
 export const SITES: Record<string, string> = {
+  me: 'https://anime1.me',
   in: 'https://anime1.in',
   one: 'https://anime1.one',
   cc: 'https://anime1.cc',
