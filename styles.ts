@@ -1,13 +1,16 @@
 // styles.ts —— App 共用 StyleSheet（由 App.tsx 抽出，只依賴 theme）
 import { StyleSheet } from "react-native";
-import { C, GLOW } from "./theme";
+import { type Theme } from "./theme";
 
-export const s = StyleSheet.create({
+// 由主題 token 砌 StyleSheet（每個風格各自 memo 一份,見 ui-theme.tsx）
+export function makeStyles(C: Theme) {
+  const GLOW = C.glow;
+  return StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: C.bg },
   rootPort: { flex: 1, backgroundColor: C.bg },
 
   focused: { borderColor: C.cyan, borderWidth: 2 },
-  rowFocused: { backgroundColor: 'rgba(52,225,232,0.08)' },
+  rowFocused: { backgroundColor: C.focusBg },
 
   // ===== Header / brand =====
   glyph: {
@@ -47,8 +50,8 @@ export const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
-  spCurOpen: { borderColor: 'rgba(255,77,141,0.5)' },
-  spBrand: { borderColor: 'rgba(155,92,255,0.4)' },
+  spCurOpen: { borderColor: C.curOpenBorder },
+  spBrand: { borderColor: C.brandBorder },
   spDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.cyan, shadowColor: C.cyan, shadowRadius: 6, shadowOpacity: 1 },
   spName: { color: C.text, fontSize: 13, fontWeight: '800', flex: 1 },
   spCar: { color: C.muted, fontSize: 11 },
@@ -86,7 +89,7 @@ export const s = StyleSheet.create({
 
   // anime row (text-only, dense)
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, marginHorizontal: 6, borderRadius: 10 },
-  rowActive: { backgroundColor: 'rgba(52,225,232,0.10)', borderWidth: 1, borderColor: 'rgba(52,225,232,0.25)' },
+  rowActive: { backgroundColor: C.activeBg, borderWidth: 1, borderColor: C.activeBorder },
   rowMain: { flex: 1, paddingVertical: 7, paddingHorizontal: 4, borderRadius: 8 },
   rowName: { color: C.text, fontSize: 14, fontWeight: '700' },
   rowNameActive: { color: C.cyan },
@@ -97,14 +100,14 @@ export const s = StyleSheet.create({
   rowSrcRow: { marginTop: 4 },
   rowSrcRowContent: { flexDirection: 'row', alignItems: 'center', paddingRight: 8 },
   rowSrcChip: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: C.line2, backgroundColor: C.surface, marginRight: 6 },
-  rowSrcChipOn: { borderColor: 'rgba(52,225,232,0.55)', backgroundColor: 'rgba(52,225,232,0.12)' },
+  rowSrcChipOn: { borderColor: C.chipOnBorder, backgroundColor: C.chipOnBg },
   rowSrcText: { color: C.muted, fontSize: 11 },
   rowSrcTextOn: { color: C.cyan, fontWeight: '700' },
   heart: { paddingHorizontal: 8, paddingVertical: 6 },
   heartIcon: { color: C.mutedDim, fontSize: 16, fontWeight: '700' },
   heartOn: { color: C.rose },
   empty: { color: C.muted, textAlign: 'center', marginTop: 28 },
-  err: { color: '#ff7a90', padding: 8, fontSize: 12 },
+  err: { color: C.errText, padding: 8, fontSize: 12 },
 
   // ===== Player column =====
   playerCol: { flex: 1, padding: 12, gap: 8 },
@@ -119,7 +122,7 @@ export const s = StyleSheet.create({
   tbName: { color: C.text, fontSize: 16, fontWeight: '800', flexShrink: 1 },
   tbEp: { backgroundColor: C.raised, borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3 },
   tbEpText: { color: C.text, fontSize: 12, fontWeight: '700' },
-  tbResume: { borderWidth: 1, borderColor: 'rgba(52,225,232,0.4)', borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3 },
+  tbResume: { borderWidth: 1, borderColor: C.resumeBorder, borderRadius: 7, paddingHorizontal: 8, paddingVertical: 3 },
   tbResumeText: { color: C.cyan, fontSize: 12, fontWeight: '700' },
   favFilter: {
     flexDirection: 'row',
@@ -132,7 +135,7 @@ export const s = StyleSheet.create({
     borderColor: C.line2,
     backgroundColor: C.bg,
   },
-  favFilterOn: { backgroundColor: 'rgba(255,77,141,0.16)', borderColor: C.rose },
+  favFilterOn: { backgroundColor: C.loveBg, borderColor: C.rose },
   favFilterText: { color: C.muted, fontSize: 12, fontWeight: '700' },
   panelToggle: { height: 34, justifyContent: 'center', paddingHorizontal: 11, borderRadius: 10, borderWidth: 1, borderColor: C.line2, backgroundColor: C.bg },
   panelToggleText: { color: C.cyan, fontSize: 12, fontWeight: '800' },
@@ -226,7 +229,7 @@ export const s = StyleSheet.create({
   spNameField: { marginTop: 6, backgroundColor: C.raised, borderRadius: 8 },
   spNameInput: { paddingHorizontal: 12, paddingVertical: 8, color: C.text, fontSize: 13 },
   srcItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 8, marginBottom: 4, borderWidth: 2, borderColor: 'transparent' },
-  srcItemOn: { backgroundColor: 'rgba(52,225,232,0.10)' },
+  srcItemOn: { backgroundColor: C.activeBg },
   srcItemHi: { borderColor: C.cyan },
   srcItemText: { color: C.text, fontSize: 13, fontWeight: '700' },
   srcItemTextOn: { color: C.cyan },
@@ -275,7 +278,7 @@ export const s = StyleSheet.create({
     color: C.text,
     fontSize: 14,
   },
-  syncErr: { color: '#ff7a90', fontSize: 12 },
+  syncErr: { color: C.errText, fontSize: 12 },
   syncRow: { flexDirection: 'row', gap: 10, marginTop: 4 },
   syncBtn: { backgroundColor: C.rose, borderRadius: 11, paddingVertical: 12, alignItems: 'center' },
   syncBtnText: { color: '#fff', fontSize: 14, fontWeight: '900' },
@@ -318,14 +321,14 @@ export const s = StyleSheet.create({
   fsTopName: { color: '#fff', fontSize: 51, fontWeight: '800', maxWidth: '70%', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
   fsTopEp: { color: 'rgba(255,255,255,0.75)', fontSize: 39, fontWeight: '700', marginTop: 6, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
   fsToggle: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(11,14,26,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  fsToggleFs: { top: 40, right: 30, backgroundColor: 'rgba(255,77,141,0.92)', borderColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  fsToggleFs: { top: 40, right: 30, backgroundColor: C.loveSolid, borderColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   fsToggleText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   // 開頭／結尾 標記掣（進度條上方，左／右分佈）
   markRow: { position: 'absolute', left: 14, right: 14, bottom: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   markGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   markBtn: { backgroundColor: 'rgba(11,14,26,0.6)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
   markBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  markClear: { width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(255,77,141,0.85)', alignItems: 'center', justifyContent: 'center' },
+  markClear: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.loveBtn, alignItems: 'center', justifyContent: 'center' },
   markClearText: { color: '#fff', fontSize: 13, fontWeight: '900' },
   seekRow: { position: 'absolute', left: 14, right: 14, bottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   timeText: { color: '#fff', fontSize: 12, fontWeight: '700', minWidth: 92 },
@@ -336,7 +339,7 @@ export const s = StyleSheet.create({
   // 角色 toggle + 遙控器面板
   roleSeg: { flexDirection: 'row', borderWidth: 1, borderColor: C.line2, borderRadius: 8, overflow: 'hidden', marginRight: 8 },
   roleSegBtn: { paddingHorizontal: 10, paddingVertical: 6 },
-  roleSegOn: { backgroundColor: 'rgba(52,225,232,0.18)' },
+  roleSegOn: { backgroundColor: C.roleSegOnBg },
   roleSegText: { color: C.muted, fontSize: 12, fontWeight: '800' },
   roleSegTextOn: { color: C.cyan },
   remotePanel: { backgroundColor: C.surface, borderRadius: 18, marginHorizontal: 10, marginTop: 8, padding: 14, gap: 8 },
@@ -377,4 +380,5 @@ export const s = StyleSheet.create({
 
   // fullscreen overlay
   fsContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000', zIndex: 100, elevation: 100 },
-});
+  });
+}

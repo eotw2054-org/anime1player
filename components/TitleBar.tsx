@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { s } from '../styles';
+import { useStyles } from '../ui-theme';
 
 // 標題列：片名 + (播放中)集數 + 角色 toggle + 收起/顯示 + (打橫)最愛篩選。
 // roleToggle / favFilter 由 App 以 slot 形式傳入。
@@ -25,6 +25,7 @@ export default function TitleBar({
   focusProps: (id: string) => any;
   focused: (id: string) => any;
 }) {
+  const s = useStyles();
   return (
     <View style={s.titleBar}>
       <Text style={s.tbName} numberOfLines={1}>

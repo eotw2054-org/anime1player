@@ -3,7 +3,7 @@ import { type GestureResponderHandlers, Pressable, Text, View } from 'react-nati
 import { type Anime } from '../lib/anime1';
 import { fmtTime } from '../lib/format';
 import { isStale, livePosition, progressPct } from '../lib/remoteProgress';
-import { s } from '../styles';
+import { useStyles } from '../ui-theme';
 
 // 遙控器面板（手機）：顯示投影機 now-playing + 進度條，送 cmd 控制。純展示 + 回呼。
 export default function RemotePanel(props: {
@@ -25,6 +25,7 @@ export default function RemotePanel(props: {
   focused: (id: string) => any;
   tick: unknown; // 每 0.5s 變一次，迫使重算進度
 }) {
+  const s = useStyles();
   const {
     remoteState: st,
     remotePlayers,
