@@ -50,6 +50,7 @@ import { type SiteKey, type Tab, type Chapter, type Current, type Progress, type
 import { UA, favKey } from './lib/format';
 import { setMark, clearMark } from './lib/marks';
 import { buildSections, buildEpBuckets } from './lib/catalog';
+import { favMapFromArray, activeFavorites, toggleFavEntry } from './lib/favorites';
 import PlayerOverlay from './components/PlayerOverlay';
 
 export default function App() {
@@ -214,10 +215,9 @@ export default function App() {
   const favAllArray = () => Object.values(favAllRef.current);
   // 套用一份 favAll（array of entries）→ 更新 ref / state / 本機儲存
   const applyFavAll = (arr: any[]) => {
-    const map: Record<string, any> = {};
-    for (const e of arr) if (e) map[favKey(e)] = e;
+    const map = favMapFromArray(arr);
     favAllRef.current = map;
-    const active = Object.values(map).filter((e: any) => !e.deleted) as Anime[];
+    const active = activeFavorites(map);
     favoritesRef.current = active;
     setFavorites(active);
     AsyncStorage.setItem('favAll', JSON.stringify(Object.values(map)));
@@ -482,16 +482,8 @@ export default function App() {
   }
 
   function toggleFav(a: Anime) {
-    const k = favKey(a);
-    const cur = favAllRef.current[k];
-    const isActive = cur && !cur.deleted;
-    const nextMap = { ...favAllRef.current };
-    if (isActive) {
-      // 軟刪除:寫 tombstone（帶 at），唔好淨係 filter 走 —— 咁先傳播到其他裝置 + 防復活
-      nextMap[k] = { site: a.site, slug: a.slug, deleted: true, at: Date.now() };
-    } else {
-      nextMap[k] = { ...a, at: Date.now() };
-    }
+    // 切換最愛（軟刪除寫 tombstone，唔淨係 filter 走 —— 咁先傳播到其他裝置 + 防復活）
+    const nextMap = toggleFavEntry(favAllRef.current, a, Date.now());
     applyFavAll(Object.values(nextMap)); // 更新 ref/state/儲存（active list 自動過濾 tombstone）
     pushNow();
   }
