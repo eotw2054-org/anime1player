@@ -46,8 +46,9 @@ import {
 } from './lib/sync';
 import { C } from './theme';
 import { s } from './styles';
-import { type SiteKey, type Tab, type Chapter, type Current, type Progress } from './lib/types';
+import { type SiteKey, type Tab, type Chapter, type Current, type Progress, type Marks } from './lib/types';
 import { UA, favKey } from './lib/format';
+import { setMark, clearMark } from './lib/marks';
 import PlayerOverlay from './components/PlayerOverlay';
 
 export default function App() {
@@ -171,8 +172,8 @@ export default function App() {
   }, [siteOpen]);
 
   // 逐套 Start/End 標記（key = site|slug）；marksRef 俾一次性 listener 讀最新值
-  const [marks, setMarks] = useState<Record<string, { start?: number; end?: number; at?: number }>>({});
-  const marksRef = useRef<Record<string, { start?: number; end?: number; at?: number }>>({});
+  const [marks, setMarks] = useState<Marks>({});
+  const marksRef = useRef<Marks>({});
   const startAtRef = useRef<number | null>(null); // 今次載入要套用嘅開頭（喺 replace 前擷取）
   const endFiredRef = useRef(false); // 今次載入已觸發 End 跳集
   const endArmedRef = useRef(false); // 觀察到 currentTime < end 後先 arm
@@ -1193,7 +1194,7 @@ export default function App() {
   };
 
   // 逐套 Start/End 標記：寫入 marksRef + state，並即時持久化（唔跟進度 5s throttle）
-  const saveMarks = (next: Record<string, { start?: number; end?: number; at?: number }>) => {
+  const saveMarks = (next: Marks) => {
     marksRef.current = next;
     setMarks(next);
     AsyncStorage.setItem('marks', JSON.stringify(next));
@@ -1207,20 +1208,13 @@ export default function App() {
       tt = player.currentTime;
     } catch {}
     if (!isFinite(tt)) return;
-    const k = favKey(c.anime);
-    saveMarks({
-      ...marksRef.current,
-      [k]: { ...marksRef.current[k], [field]: Math.max(0, Math.floor(tt)), at: Date.now() },
-    });
+    saveMarks(setMark(marksRef.current, favKey(c.anime), field, tt, Date.now()));
     showControls();
   };
   const clearMarkField = (field: 'start' | 'end') => {
     const c = currentRef.current;
     if (!c) return;
-    const k = favKey(c.anime);
-    const m = { ...marksRef.current[k], at: Date.now() };
-    delete m[field];
-    saveMarks({ ...marksRef.current, [k]: m });
+    saveMarks(clearMark(marksRef.current, favKey(c.anime), field, Date.now()));
     showControls();
   };
 

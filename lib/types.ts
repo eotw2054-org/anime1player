@@ -24,3 +24,11 @@ export interface Progress {
   time: number;
   at?: number;
 }
+
+/** 逐套動畫嘅片頭/片尾標記（秒）。key = favKey(site|slug） */
+export interface Mark {
+  start?: number;
+  end?: number;
+  at?: number;
+}
+export type Marks = Record<string, Mark>;
