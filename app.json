@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 架構重整第二階段(全部行為不變 + 加咗測試,共 74 個):標記/清單/最愛/遙控進度 邏輯抽晒入 lib/,AsyncStorage 統一,清走 32 個靜音 catch。\n• 麻煩順手 smoke test 核心流程:揀片→播、上/下集、拖進度、收藏/取消收藏、設清標記、遙控進度條、分流選單(D-pad)。有任何唔對路即刻回報。"
+      "releaseNotes": "• 架構重整:選集格抽成獨立 component(打橫/打直共用),行為不變。\n• 麻煩試下選集(揀集→播)同正常用,有問題回報。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
