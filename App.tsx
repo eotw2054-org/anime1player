@@ -2016,7 +2016,7 @@ export default function App() {
             <Text style={s.glyphText}>A1</Text>
           </Pressable>
           <Text style={s.brandWord} numberOfLines={1}>
-            Anime1Player
+            宅家看動漫
           </Text>
           <View style={{ flex: 1 }} />
           {roleToggle}

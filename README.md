@@ -1,4 +1,4 @@
-# Anime1 Player（React Native / Expo Android App）
+# 宅家看動漫（前稱 Anime1 Player｜React Native / Expo Android App）
 
 由 `20260621.html` 重寫成原生 Android App。
 - **無 CORS**：用原生 `fetch` 撈 anime1.in / anime1.one（唔使瀏覽器擴充、唔使代理、唔使開電腦）
@@ -71,7 +71,7 @@ rn-app/
 - **USB**：`adb install -r app-debug.apk`（投影機開「開發者選項 → USB 偵錯」）
 - **手動**：將 `app-debug.apk` 傳去投影機 → 檔案管理員開啟 → 允許「安裝未知來源」→ 安裝
 
-裝完桌面有 **Anime1 Player**，開 App 即用。
+裝完桌面有 **宅家看動漫**，開 App 即用。
 
 ---
 
