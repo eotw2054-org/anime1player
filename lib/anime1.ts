@@ -16,7 +16,7 @@ export const SITES: Record<string, string> = {
 
 /** 設定面板嘅來源顯示名（anime1 family 用 anime1.<k>,其他站自訂）。 */
 export const SITE_LABELS: Record<string, string> = {
-  gimyplus: 'Gimy+（動漫·主）',
+  gimyplus: 'gimyplus（動漫·主）',
   gimytv: 'GimyTV（動漫）',
   gimytw: 'GimyTW（動漫）',
 };

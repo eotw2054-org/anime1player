@@ -260,9 +260,10 @@ export function createMacCmsProvider(cfg: MacCmsConfig): SourceProvider {
 }
 
 // ---------- Gimy 鏡像 configs（gimyplus 做主）----------
-// 註:gimypro.com 分類路由同 gimyplus 唔同(/show /type /vodshow 全 404),暫時唔收;搵到正確路徑先加返。
+// 註:gimypro.com 係另一個 fork(Pro版),路由完全唔同(/browse 列表、/title 詳情、/watch 集數),
+// 等於要第三個 profile,暫時唔收;若主來源失效再投資整 profile C。
 export const GIMY_CONFIGS: MacCmsConfig[] = [
-  { id: 'gimyplus', label: 'Gimy+（動漫·主）', base: 'https://gimyplus.com', animeType: 4, profile: 'B' },
+  { id: 'gimyplus', label: 'gimyplus（動漫·主）', base: 'https://gimyplus.com', animeType: 4, profile: 'B' },
   { id: 'gimytv', label: 'GimyTV（動漫）', base: 'https://gimytv.biz', animeType: 4, profile: 'A' },
   { id: 'gimytw', label: 'GimyTW（動漫）', base: 'https://gimytw.net', animeType: 4, profile: 'A' },
 ];
