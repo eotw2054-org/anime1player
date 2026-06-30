@@ -22,7 +22,7 @@ import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import * as Updates from 'expo-updates';
 import { K, listKey, getItem, removeItem, setStr, setJSON, setFlag } from './storage/persist';
-import { type Anime, SITES, SITE_LABELS, isPlayable } from './lib/anime1';
+import { type Anime, SITES, SITE_LABELS, siteDefaultOn, isPlayable } from './lib/anime1';
 import { adSkipTarget, type AdRange } from './lib/adskip';
 import { getProvider, getProviderBySite } from './lib/sources/registry';
 import {
@@ -61,7 +61,7 @@ export default function App() {
   const [lists, setLists] = useState<Record<string, Anime[]>>({}); // 每個站台一份清單（合併顯示）
   // 來源篩選：揀用邊幾個主來源（預設全選）；撳 [A1] 開選單
   const [enabledSites, setEnabledSites] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(Object.keys(SITES).map((k) => [k, true]))
+    Object.fromEntries(Object.keys(SITES).map((k) => [k, siteDefaultOn(k)]))
   );
   const [loadingList, setLoadingList] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
@@ -369,7 +369,7 @@ export default function App() {
           const saved = JSON.parse(esites) as Record<string, boolean>;
           // 以目前 SITES 為準補齊（新增站台預設開）
           setEnabledSites(
-            Object.fromEntries(Object.keys(SITES).map((k) => [k, saved[k] ?? true]))
+            Object.fromEntries(Object.keys(SITES).map((k) => [k, saved[k] ?? siteDefaultOn(k)]))
           );
         } catch (e) { if (__DEV__) console.warn(e); }
       }

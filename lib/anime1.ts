@@ -8,13 +8,26 @@ export const SITES: Record<string, string> = {
   in: 'https://anime1.in',
   one: 'https://anime1.one',
   cc: 'https://anime1.cc',
-  gimy: 'https://gimytv.biz',
+  // Gimy 鏡像（MacCMS,經 lib/sources/maccms.ts）。gimyplus 做主,其餘做後備。
+  gimyplus: 'https://gimyplus.com',
+  gimytv: 'https://gimytv.biz',
+  gimypro: 'https://gimypro.com',
+  gimytw: 'https://gimytw.net',
 };
 
 /** 設定面板嘅來源顯示名（anime1 family 用 anime1.<k>,其他站自訂）。 */
 export const SITE_LABELS: Record<string, string> = {
-  gimy: 'Gimy（動漫）',
+  gimyplus: 'Gimy+（動漫·主）',
+  gimytv: 'GimyTV（動漫）',
+  gimypro: 'GimyPro（動漫）',
+  gimytw: 'GimyTW（動漫）',
 };
+
+/** 預設關咗嘅來源（後備鏡像;同 catalog 重複,用戶想要先開）。 */
+export const SITE_DEFAULT_OFF = new Set<string>(['gimytv', 'gimypro', 'gimytw']);
+
+/** 某來源預設開唔開（新 key 首次出現時用）。 */
+export const siteDefaultOn = (k: string): boolean => !SITE_DEFAULT_OFF.has(k);
 
 export interface Anime {
   site: string;           // 來源站（絕對網址，例：https://anime1.in）
