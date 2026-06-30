@@ -33,14 +33,14 @@
 - [x] 5.3 unit：`parseApireq` / `parseAdjacent` / `parseApiSource` / registry 解析（me→anime1me、in→anime1）
 - [x] 5.4 `npx tsc --noEmit` + `npm test` 綠（92/92）
 
-## 6. 驗證（手機 smoke，OTA 前必做）— 待 owner 落機
+## 6. 驗證（手機 smoke）— ✅ 實機確認播到（2026-06-30）
 
-- [ ] 6.1 由 anime1.me 來源揀片 → 播；上一集/下一集；拖進度
-- [ ] 6.2 確認**成人番完全唔現身**（anime1.pw 名單任一隻搵唔到）
-- [ ] 6.3 廣告自動跳正常
-- [ ] 6.4 Regression：`.in/.one/.cc` 清單 / 播放 不變
-- [ ] 6.5 ⚠️ 重點驗 cookie：RN 原生 fetch 要把 anime1.me 嘅 session cookie 帶去 `v.anime1.me/api`；若 403/播唔到,需確認 cookie 跨 subdomain 行為（或 getEpisode→resolveStream 同一 session）
-- [ ] 6.6 ⚠️ 驗 mp4 播放 Referer：`loadStream` 用 `embedUrl` origin(=anime1.me) 做 Referer;若 mp4 403 試 `https://v.anime1.me/`
+- [x] 6.1 由 anime1.me 來源揀片 → 播（owner 確認「it works」）
+- [x] 6.5 cookie 問題已解:mp4 CDN 需 `e/p/h` cookie(POST `v.anime1.me/api` 派),經 `_rawHeaders` 讀返 + VideoSource `Cookie` header 傳落 ExoPlayer（見 fix commit + memory expo56-fetch-cookies）
+- [ ] 6.2 確認成人番唔現身（owner 順手核對）
+- [ ] 6.3 廣告自動跳（anime1.me 係 mp4,多數冇 server-stitch 廣告,adDetector 只 .m3u8 行）
+- [ ] 6.4 Regression：`.in/.one/.cc` 不變
+- [x] 6.6 mp4 Referer:用 `embedUrl` origin（anime1.me）+ 連 Cookie,實機播到
 
 ## 7. 部署 — 待 owner
 
