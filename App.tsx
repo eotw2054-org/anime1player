@@ -49,6 +49,7 @@ import { s } from './styles';
 import { type SiteKey, type Tab, type Chapter, type Current, type Progress, type Marks } from './lib/types';
 import { UA, favKey } from './lib/format';
 import { setMark, clearMark } from './lib/marks';
+import { buildSections, buildEpBuckets } from './lib/catalog';
 import PlayerOverlay from './components/PlayerOverlay';
 
 export default function App() {
@@ -705,33 +706,10 @@ export default function App() {
   }
 
   // ===== 側欄清單分組 =====
-  const sections = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    // 合併揀咗嘅主來源做一個清單（瀏覽 + 搜尋都係）
-    const src =
-      tab === 'fav'
-        ? favorites
-        : (Object.keys(SITES) as SiteKey[]).filter((s) => enabledSites[s]).flatMap((s) => lists[s] ?? []);
-    // 去重複：同一套（site|slug）只留第一次出現，維持原本次序
-    const seen = new Set<string>();
-    const deduped = src.filter((a) => {
-      const k = favKey(a);
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-    const filtered = deduped.filter((a) => !q || a.search.includes(q) || a.slug.includes(q));
-    if (tab === 'fav') {
-      return filtered.length ? [{ title: '★ 我的最愛', data: filtered }] : [];
-    }
-    const groups: Record<string, Anime[]> = {};
-    filtered.forEach((a) => {
-      (groups[a.updateYear] ||= []).push(a);
-    });
-    return Object.keys(groups)
-      .sort((x, y) => (y === '其他' ? -1 : x === '其他' ? 1 : Number(y) - Number(x)))
-      .map((yr) => ({ title: yr === '其他' ? '其他' : `${yr} 年更新`, data: groups[yr] }));
-  }, [lists, enabledSites, favorites, query, tab]);
+  const sections = useMemo(
+    () => buildSections(lists, enabledSites, favorites, query, tab),
+    [lists, enabledSites, favorites, query, tab],
+  );
 
   // ===== 焦點輔助（讓遙控器 / 空中滑鼠可操作）=====
   const focusProps = (id: string) => ({
@@ -749,15 +727,7 @@ export default function App() {
 
   // ===== 集數分段（>50 集分頁，方便揀）=====
   const EP_BUCKET = 50;
-  const epBuckets = useMemo(() => {
-    if (chapters.length <= EP_BUCKET) return [] as { start: number; end: number; label: string }[];
-    const out: { start: number; end: number; label: string }[] = [];
-    for (let i = 0; i < chapters.length; i += EP_BUCKET) {
-      const end = Math.min(i + EP_BUCKET, chapters.length);
-      out.push({ start: i, end, label: `${chapters[i].ep}–${chapters[end - 1].ep}` });
-    }
-    return out;
-  }, [chapters]);
+  const epBuckets = useMemo(() => buildEpBuckets(chapters, EP_BUCKET), [chapters]);
 
   // 換動畫 → 重設分段
   useEffect(() => {
