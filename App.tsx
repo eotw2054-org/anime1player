@@ -35,8 +35,8 @@ import {
   mergeByRecency,
   SYNC_BASE,
 } from './lib/sync';
-import { C } from './theme';
-import { s } from './styles';
+import { THEMES, THEME_IDS } from './theme';
+import { ThemeProvider, useTheme, useStyles, useThemeControl } from './ui-theme';
 import { type SiteKey, type Tab, type Chapter, type Current, type Progress, type Marks } from './lib/types';
 import { UA, favKey } from './lib/format';
 import { setMark, clearMark } from './lib/marks';
@@ -52,7 +52,10 @@ import { useOtaUpdate } from './hooks/useOtaUpdate';
 import { useOrientationLock } from './hooks/useOrientationLock';
 import { useKeepAwakeWhile } from './hooks/useKeepAwakeWhile';
 
-export default function App() {
+function AppMain() {
+  const C = useTheme();
+  const s = useStyles();
+  const { id: themeId, setThemeId } = useThemeControl();
   const { width, height } = useWindowDimensions();
   const isLandscape = width >= height;
   // Android edge-to-edge：app 畫面會畫到狀態列底下，要用真實狀態列高度做 paddingTop，
@@ -1887,6 +1890,21 @@ export default function App() {
         <Text style={s.syncSub}>播放偏好</Text>
         {autoBestToggle}
         {fsOnPlayToggle}
+        <Text style={[s.syncSub, { marginTop: 14 }]}>外觀主題</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6, marginBottom: 2 }}>
+          {THEME_IDS.map((tid) => {
+            const on = themeId === tid;
+            return (
+              <Pressable
+                key={tid}
+                {...focusProps('theme-' + tid)}
+                style={[s.range, on && s.rangeOn, focused('theme-' + tid)]}
+                onPress={() => setThemeId(tid)}>
+                <Text style={[s.rangeText, on && s.rangeTextOn]}>{THEMES[tid].label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <Pressable
           {...focusProps('settings-close')}
           hasTVPreferredFocus
@@ -2104,5 +2122,13 @@ export default function App() {
       {settingsModal}
       {updateModal}
     </View>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppMain />
+    </ThemeProvider>
   );
 }

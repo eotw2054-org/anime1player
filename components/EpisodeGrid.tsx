@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { type Chapter } from '../lib/types';
-import { s } from '../styles';
+import { useStyles } from '../ui-theme';
 
 // 選集格：可 wrap 嘅集數按鈕（打橫/打直共用）。純展示，靠 props 收資料 + 回呼。
 export default function EpisodeGrid({
@@ -20,6 +20,7 @@ export default function EpisodeGrid({
   focusProps: (id: string) => any;
   focused: (id: string) => any;
 }) {
+  const s = useStyles();
   return (
     <View style={s.epWrap} onLayout={(e) => onLayout(e.nativeEvent.layout.width)}>
       {chapters.map((item) => {

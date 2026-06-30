@@ -3,7 +3,7 @@ import { PanResponder, Pressable, Text, View } from "react-native";
 import { useEventListener } from "expo";
 import { type Current } from "../lib/types";
 import { fmtTime } from "../lib/format";
-import { s } from "../styles";
+import { useStyles } from "../ui-theme";
 
 // 自訂播放控制（取代原生控制，等疊層上/下集同播放控制一齊 show/hide）
 export default function PlayerOverlay(props: {
@@ -24,6 +24,7 @@ export default function PlayerOverlay(props: {
   focusProps: (id: string) => any;
   focused: (id: string) => any;
 }) {
+  const s = useStyles();
   const {
     player, current, ctrlShown, fullscreen,
     showControls, hideControls, onPrev, onNext, onToggleFs,

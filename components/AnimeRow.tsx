@@ -3,7 +3,7 @@ import { type Anime, SITES } from '../lib/anime1';
 import { type AnimeGroup } from '../lib/catalog';
 import { favKey } from '../lib/format';
 import { type SiteKey } from '../lib/types';
-import { s } from '../styles';
+import { useStyles } from '../ui-theme';
 
 /** 來源短名:anime1 family → anime1.<k>;其他站 → 直接 key（gimyplus…）。 */
 function siteShort(site: string): string {
@@ -30,6 +30,7 @@ export default function AnimeRow({
   focusProps: (id: string) => any;
   focused: (id: string) => any;
 }) {
+  const s = useStyles();
   const { primary, sources } = group;
   const hasActive = sources.some(activeOf);
   const pk = favKey(primary);
