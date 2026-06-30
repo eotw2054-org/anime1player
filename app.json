@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 架構重整:標題列同清單一行(片名/集數/收藏心心)抽成獨立 component,行為不變。\n• 麻煩試下:側欄揀動畫、收藏/取消收藏(心心)、標題列收起/顯示、角色 toggle。有問題回報。"
+      "releaseNotes": "• 架構重整:OTA 更新邏輯抽成 hook(你而家見到呢個提示 = 佢正常 work)。行為不變。\n• 正常用就得,有問題回報。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
