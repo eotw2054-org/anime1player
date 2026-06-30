@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 換上新 logo:app 內左上角 [A1] 變咗「宅家看動漫」圓形 logo(即時生效)。\n• 主畫面 app icon 都換成新 logo,但要下次重裝 APK 先會喺桌面見到。"
+      "releaseNotes": "• 介面文字全面改為書面語繁體中文（例如「揀」改為「選擇」、「試下」改為「請」、「仲未」改為「尚未」等）。\n• 功能不變。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

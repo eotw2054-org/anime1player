@@ -58,20 +58,20 @@ export default function RemotePanel(props: {
       {!syncUser ? (
         <View style={s.remoteCenter}>
           {!titleAnime && roleToggle}
-          <Text style={s.remoteHint}>請先登入雲端同步（撳右上角 ☁）</Text>
+          <Text style={s.remoteHint}>請先登入雲端同步（按右上角 ☁）</Text>
         </View>
       ) : remotePlayers.length === 0 ? (
         <View style={s.remoteCenter}>
           {!titleAnime && roleToggle}
           <Text style={s.remoteHint}>未連接到播放器</Text>
-          <Text style={s.remoteSub}>喺另一部裝置開 App、設為「播放器」、登入同一帳戶</Text>
+          <Text style={s.remoteSub}>在另一部裝置開啟 App、設為「播放器」、登入同一帳戶</Text>
           <Pressable {...focusProps('rc-rescan')} style={[s.syncBtn, focused('rc-rescan')]} onPress={onRescan}>
             <Text style={s.syncBtnText}>🔄 重新搜尋</Text>
           </Pressable>
         </View>
       ) : (
         <>
-          {/* 第一行：device(左) / 片名(中) / 全屏幕(右) */}
+          {/* 第一行：device(左) / 片名(中) / 全螢幕(右) */}
           <View style={s.rcTopRow}>
             {remotePlayers.length > 1 ? (
               <Pressable
@@ -81,7 +81,7 @@ export default function RemotePanel(props: {
                   const i = remotePlayers.findIndex((p) => p.deviceId === targetId);
                   setTargetId(remotePlayers[(i + 1) % remotePlayers.length].deviceId);
                 }}>
-                <Text style={s.rcTargetText} numberOfLines={1}>🖥 {target?.name ?? '揀'} ▾</Text>
+                <Text style={s.rcTargetText} numberOfLines={1}>🖥 {target?.name ?? '選擇'} ▾</Text>
               </Pressable>
             ) : (
               <Text style={s.rcTargetStatic} numberOfLines={1}>🖥 {target?.name ?? remotePlayers[0]?.name}</Text>
@@ -90,7 +90,7 @@ export default function RemotePanel(props: {
               {stale ? '連線中斷…' : st ? `${st.title ?? ''}${st.ep ? ' · 第 ' + st.ep + ' 集' : ''}` : '（未播放）'}
             </Text>
             <Pressable {...focusProps('rc-fs')} style={[s.rcFsBtn, focused('rc-fs')]} onPress={() => rcmd('fs', true)}>
-              <Text style={s.rcFsText}>⛶ 全屏幕</Text>
+              <Text style={s.rcFsText}>⛶ 全螢幕</Text>
             </Pressable>
           </View>
           <View style={s.rcSeekRow} {...rsPanHandlers}>
@@ -149,7 +149,7 @@ export default function RemotePanel(props: {
               </Pressable>
             </View>
           </View>
-          {remoteLocked && <Text style={s.rcLockHint}>🔒 已鎖定 · 唔會控制播放器（防誤觸）</Text>}
+          {remoteLocked && <Text style={s.rcLockHint}>🔒 已鎖定 · 不會控制播放器（防誤觸）</Text>}
         </>
       )}
     </View>

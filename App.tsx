@@ -549,7 +549,7 @@ export default function App() {
     setPlayError(null);
     try {
       const info = await getProvider(anime).getEpisode(url);
-      if (!info.streams.length) throw new Error('找唔到播放器來源');
+      if (!info.streams.length) throw new Error('找不到播放器來源');
       // 切換「影片」（換咗一套）先做最佳片源探測；同一套換 chapter 唔再 detect（基本上唔會轉）
       const prevAnime = currentRef.current?.anime;
       const isNewAnime = !prevAnime || favKey(prevAnime) !== favKey(anime);
@@ -580,7 +580,7 @@ export default function App() {
         nextUrl: info.nextUrl,
       });
       if (fsOnPlay) setFullscreen(true);
-      if (!ok) setPlayError('無法解析此來源，試下切換來源');
+      if (!ok) setPlayError('無法解析此來源，請切換來源');
       // 未探測過先背景探測排序（顯示 ms）；自動最佳已經喺上面探測過,唔使再做
       if (!probed) probeAndSort(url, streams);
     } catch (e: any) {
@@ -636,7 +636,7 @@ export default function App() {
         } catch (e) { if (__DEV__) console.warn(e); }
         const ok = await loadStream(timed, 0, c.anime);
         preferredRef.current = best.label; // 同套之後嘅 chapter 沿用
-        if (!ok) setPlayError('最佳來源無法播放，試下手動切換');
+        if (!ok) setPlayError('最佳來源無法播放，請手動切換');
       }
       setCurrent((x) => {
         if (!x || x.episodeUrl !== c.episodeUrl) return x;
@@ -832,7 +832,7 @@ export default function App() {
   const doAuth = async (mode: 'login' | 'signup') => {
     const name = syncName.trim();
     if (!name || !syncPass) {
-      setSyncErr('請輸入帳號同密碼');
+      setSyncErr('請輸入帳號和密碼');
       return;
     }
     setSyncBusy(true);
@@ -1595,7 +1595,7 @@ export default function App() {
       style={[s.playerArea, !isLandscape && s.playerAreaPortrait]}>
       {!isPlaying && (
         <View style={s.placeholder}>
-          <Text style={s.placeholderText}>{selected ? '揀一集開始播放' : '← 揀一套動畫'}</Text>
+          <Text style={s.placeholderText}>{selected ? '選擇一集開始播放' : '← 選擇動畫'}</Text>
         </View>
       )}
     </View>
@@ -1761,7 +1761,7 @@ export default function App() {
               setDeviceName(v);
               setStr(K.deviceName, v);
             }}
-            placeholder="自定義名稱（撳 OK 打字）"
+            placeholder="自訂名稱（按 OK 輸入）"
             placeholderTextColor={C.muted}
             maxLength={64}
           />
@@ -1825,7 +1825,7 @@ export default function App() {
               <Text style={s.syncLogoutText}>登出</Text>
             </Pressable>
             <Text style={s.syncWho}>已登入：{syncUser}</Text>
-            <Text style={s.syncSub}>改動即時同步（WebSocket）；亦可手動即刻同步</Text>
+            <Text style={s.syncSub}>改動即時同步（WebSocket）；亦可手動立即同步</Text>
             <Pressable
               {...focusProps('sync-now')}
               hasTVPreferredFocus
@@ -1953,7 +1953,7 @@ export default function App() {
                 contentContainerStyle={{ paddingBottom: 16 }}
                 renderSectionHeader={({ section }) => sectionHeader(section.title, section.data.length)}
                 renderItem={({ item }) => renderAnimeRow(item)}
-                ListEmptyComponent={<Text style={s.empty}>{tab === 'fav' ? '仲未加任何最愛' : '（無符合）'}</Text>}
+                ListEmptyComponent={<Text style={s.empty}>{tab === 'fav' ? '尚未加入任何最愛' : '（無符合）'}</Text>}
               />
             )}
           </View>
@@ -2094,7 +2094,7 @@ export default function App() {
         keyboardShouldPersistTaps="handled"
         renderSectionHeader={({ section }) => sectionHeader(section.title, section.data.length)}
         renderItem={({ item }) => renderAnimeRow(item)}
-        ListEmptyComponent={<Text style={s.empty}>{tab === 'fav' ? '仲未加任何最愛' : '（無符合）'}</Text>}
+        ListEmptyComponent={<Text style={s.empty}>{tab === 'fav' ? '尚未加入任何最愛' : '（無符合）'}</Text>}
       />
 
       {playerHost}
