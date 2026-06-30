@@ -11,7 +11,7 @@ const NAMESPACE_ID = 'f5444f7783374419abf63bca3296b54b';
 const WORKER_URL = 'https://anime1-ota.eotw2054.workers.dev';
 const CHANNEL = 'production';
 const PLATFORM = 'android';
-const RUNTIME = '1.0.1';
+const RUNTIME = '1.0.2';
 const DIST = path.resolve('dist');
 const NPX = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 

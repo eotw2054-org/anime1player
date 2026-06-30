@@ -25,13 +25,14 @@
     },
     "plugins": [
       "expo-video",
-      "./plugins/withRemoteKeys.js"
+      "./plugins/withRemoteKeys.js",
+      "expo-font"
     ],
     "extra": {
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• Gimy 嘅分流（線路）改成下拉,同 anime1 嘅分流一致;唔再用橫向 tabs。\n• 單一片源唔再顯示多餘嘅「Main」選擇器。"
+      "releaseNotes": "• 換上圓潤字體:全 app 用 jf 粉圓(全繁圓體),數字用 Baloo 2。\n• 字型已打包入 APK,需要重裝呢個版本先生效。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
@@ -39,6 +40,6 @@
         "expo-channel-name": "production"
       }
     },
-    "runtimeVersion": "1.0.1"
+    "runtimeVersion": "1.0.2"
   }
 }

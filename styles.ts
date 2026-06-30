@@ -2,10 +2,23 @@
 import { StyleSheet } from "react-native";
 import { type Theme } from "./theme";
 
+// 圓體字型:全 app 內文用 jf 粉圓(全繁);數字/英文用 Baloo 2（由 useFonts 載,名 Huninn/Baloo2）
+export const FONT_BODY = 'Huninn';
+export const FONT_NUM = 'Baloo2';
+// 自動把 fontFamily 套入所有「文字」style(有 fontSize 或 color),免逐個改;style 自帶 fontFamily 可覆蓋
+function applyFont(o: Record<string, any>): Record<string, any> {
+  const r: Record<string, any> = {};
+  for (const k in o) {
+    const st = o[k];
+    r[k] = st && (st.fontSize != null || st.color != null) ? { fontFamily: FONT_BODY, ...st } : st;
+  }
+  return r;
+}
+
 // 由主題 token 砌 StyleSheet（每個風格各自 memo 一份,見 ui-theme.tsx）
 export function makeStyles(C: Theme) {
   const GLOW = C.glow;
-  return StyleSheet.create({
+  const raw: Record<string, any> = {
   root: { flex: 1, flexDirection: 'row', backgroundColor: C.bg },
   rootPort: { flex: 1, backgroundColor: C.bg },
 
@@ -161,7 +174,7 @@ export function makeStyles(C: Theme) {
   epWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 8 },
   ep: { height: 30, borderRadius: 8, backgroundColor: C.raised, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   epOn: { backgroundColor: C.rose, borderColor: C.rose },
-  epText: { color: C.text, fontSize: 13, fontWeight: '800' },
+  epText: { color: C.text, fontSize: 13, fontWeight: '800', fontFamily: FONT_NUM },
   epTextOn: { color: '#fff' },
 
   // settings row (來源)
@@ -331,7 +344,7 @@ export function makeStyles(C: Theme) {
   markClear: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.loveBtn, alignItems: 'center', justifyContent: 'center' },
   markClearText: { color: '#fff', fontSize: 13, fontWeight: '900' },
   seekRow: { position: 'absolute', left: 14, right: 14, bottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  timeText: { color: '#fff', fontSize: 12, fontWeight: '700', minWidth: 92 },
+  timeText: { color: '#fff', fontSize: 12, fontWeight: '700', minWidth: 92, fontFamily: FONT_NUM },
   seekBarWrap: { flex: 1, height: 22, justifyContent: 'center' },
   seekTrack: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.32)' },
   seekFill: { position: 'absolute', left: 0, height: 4, borderRadius: 2, backgroundColor: GLOW },
@@ -380,5 +393,6 @@ export function makeStyles(C: Theme) {
 
   // fullscreen overlay
   fsContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000', zIndex: 100, elevation: 100 },
-  });
+  };
+  return StyleSheet.create(applyFont(raw));
 }
