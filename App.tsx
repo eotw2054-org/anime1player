@@ -55,6 +55,7 @@ import PlayerOverlay from './components/PlayerOverlay';
 import EpisodeGrid from './components/EpisodeGrid';
 import RemotePanel from './components/RemotePanel';
 import TitleBar from './components/TitleBar';
+import AnimeRow from './components/AnimeRow';
 
 export default function App() {
   const { width, height } = useWindowDimensions();
@@ -1356,33 +1357,16 @@ export default function App() {
 
   const renderAnimeRow = (item: Anime) => {
     const k = favKey(item);
-    const fav = favSet.has(k);
-    const active = selected != null && favKey(selected) === k;
-    // 顯示來源站台（合併清單會混入兩站，標籤分得清）
-    const siteTag = (Object.keys(SITES) as SiteKey[]).find((kk) => SITES[kk] === item.site);
     return (
-      <View style={[s.row, active && s.rowActive]}>
-        <Pressable
-          {...focusProps('row-' + k)}
-          style={[s.rowMain, focused('row-' + k) && s.rowFocused]}
-          onPress={() => openAnime(item)}>
-          <Text style={[s.rowName, active && s.rowNameActive]} numberOfLines={1}>
-            {active ? '● ' : ''}
-            {item.name}
-          </Text>
-          <Text style={s.rowMeta} numberOfLines={1}>
-            <Text style={s.rowLive}>{item.cntText}</Text> · {item.update}
-            {siteTag ? <Text style={s.rowSite}>{'  ·  anime1.' + siteTag}</Text> : null}
-          </Text>
-        </Pressable>
-        <Pressable
-          {...focusProps('heart-' + k)}
-          hitSlop={8}
-          style={[s.heart, focused('heart-' + k)]}
-          onPress={() => toggleFav(item)}>
-          <Text style={[s.heartIcon, fav && s.heartOn]}>{fav ? '♥' : '♡'}</Text>
-        </Pressable>
-      </View>
+      <AnimeRow
+        item={item}
+        fav={favSet.has(k)}
+        active={selected != null && favKey(selected) === k}
+        onOpen={() => openAnime(item)}
+        onToggleFav={() => toggleFav(item)}
+        focusProps={focusProps}
+        focused={focused}
+      />
     );
   };
 
