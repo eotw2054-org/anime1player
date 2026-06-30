@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 架構重整:螢幕方向鎖定 + 全螢幕防屏保 抽成 hooks,行為不變。\n• 麻煩喺手機試:入/出全螢幕會自動打橫/打直;全螢幕睇片唔好熄屏。"
+      "releaseNotes": "• 架構重整:來源抽象層(SourceProvider)—— App 唔再直接綁死 anime1,將來加來源易好多。anime1 行為不變。\n• 重點 smoke test:揀有紀錄片→續看、揀新片→即播、上/下集、切分流、自動最佳片源、跳廣告、遙控揀片→投影機播、設/清標記。有任何唔對路即刻回報。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
