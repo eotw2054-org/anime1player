@@ -22,7 +22,7 @@ import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import * as Updates from 'expo-updates';
 import { K, listKey, getItem, removeItem, setStr, setJSON, setFlag } from './storage/persist';
-import { type Anime, SITES, isPlayable } from './lib/anime1';
+import { type Anime, SITES, SITE_LABELS, isPlayable } from './lib/anime1';
 import { adSkipTarget, type AdRange } from './lib/adskip';
 import { getProvider, getProviderBySite } from './lib/sources/registry';
 import {
@@ -1664,7 +1664,7 @@ export default function App() {
               style={[s.spOpt, on && s.spOptOn, focused('site-' + k)]}
               onPress={() => toggleSite(k)}>
               <View style={[s.spDot, !on && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
-              <Text style={[s.spOptText, on && s.spOptTextOn]}>anime1.{k}</Text>
+              <Text style={[s.spOptText, on && s.spOptTextOn]}>{SITE_LABELS[k] ?? 'anime1.' + k}</Text>
               <Text style={s.spOptCk}>{on ? '✓' : ''}</Text>
             </Pressable>
           );
