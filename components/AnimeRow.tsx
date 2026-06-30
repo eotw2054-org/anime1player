@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { type Anime, SITES } from '../lib/anime1';
 import { type AnimeGroup } from '../lib/catalog';
 import { favKey } from '../lib/format';
@@ -46,7 +46,12 @@ export default function AnimeRow({
             {primary.name}
           </Text>
         </Pressable>
-        <View style={s.rowSrcWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.rowSrcRow}
+          contentContainerStyle={s.rowSrcRowContent}
+          keyboardShouldPersistTaps="handled">
           {sources.map((src) => {
             const sk = favKey(src);
             const on = activeOf(src);
@@ -63,7 +68,7 @@ export default function AnimeRow({
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
       <Pressable
         {...focusProps('heart-' + pk)}

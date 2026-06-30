@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 同名分組:同一套戲跨來源併成一行,每個來源一粒可撳 chip。\n• 修正:同一個來源站唔再重複出 chip(例如 cc 既有『天命』又有『天命動漫』→ 只留一粒,揀短名)。\n• 最愛一樣分組顯示多來源;心心 = 成組收藏/取消。"
+      "releaseNotes": "• 同名分組嘅來源 chip 改成單行橫向拖動(唔再換行佔幾行),好似線路選擇咁。\n• 每個來源站只出一粒 chip;最愛一樣分組顯示多來源。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
