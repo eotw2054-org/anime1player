@@ -87,6 +87,21 @@ describe('normalizeName + groupAnimes', () => {
     const g = groupAnimes([anime('a', '2026', '天命'), anime('b', '2026', '吞噬星空')]);
     expect(g).toHaveLength(2);
   });
+
+  it('dedupes one chip per source site (天命 + 天命動漫 same site → one)', () => {
+    const g = groupAnimes([
+      anime('tm', '2026', '天命', 'https://anime1.cc'),
+      anime('tm2', '其他', '天命動漫', 'https://anime1.cc'), // 同站、唔同 slug
+      anime('g1', '其他', '天命動漫', 'https://gimytv.biz'),
+      anime('g2', '其他', '天命', 'https://gimytv.biz'),
+    ]);
+    expect(g).toHaveLength(1);
+    expect(g[0].sources).toHaveLength(2); // cc 一個 + gimytv 一個
+    expect(g[0].sources.map((a) => a.site).sort()).toEqual(['https://anime1.cc', 'https://gimytv.biz']);
+    // 每站留短名嗰個
+    expect(g[0].sources.find((a) => a.site.includes('cc'))!.name).toBe('天命');
+    expect(g[0].sources.find((a) => a.site.includes('gimytv'))!.name).toBe('天命');
+  });
 });
 
 describe('buildSections (fav tab)', () => {

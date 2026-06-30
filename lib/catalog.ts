@@ -40,7 +40,18 @@ export function groupAnimes(animes: Anime[]): AnimeGroup[] {
   }
   return order.map((key) => {
     const arr = map.get(key)!;
-    const sources = [...arr].sort((x, y) => (hasRealYear(x) ? 0 : 1) - (hasRealYear(y) ? 0 : 1));
+    // 排序:有真年份優先 → 短名優先(「天命」勝「天命動漫」);再每個 site 只留一個(同站唔重複)
+    const sorted = [...arr].sort((x, y) => {
+      const ry = (hasRealYear(x) ? 0 : 1) - (hasRealYear(y) ? 0 : 1);
+      return ry || x.name.length - y.name.length;
+    });
+    const sources: Anime[] = [];
+    const seenSite = new Set<string>();
+    for (const a of sorted) {
+      if (seenSite.has(a.site)) continue;
+      seenSite.add(a.site);
+      sources.push(a);
+    }
     return { key, primary: sources[0], sources };
   });
 }
