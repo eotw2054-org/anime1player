@@ -6,6 +6,7 @@ import {
   DeviceEventEmitter,
   findNodeHandle,
   FlatList,
+  Image,
   PanResponder,
   Platform,
   Pressable,
@@ -2013,7 +2014,7 @@ export default function App() {
             {...focusProps('a1-filter')}
             style={[s.glyph, focused('a1-filter')]}
             onPress={() => setSiteOpen((v) => !v)}>
-            <Text style={s.glyphText}>A1</Text>
+            <Image source={require('./assets/logo.png')} style={s.glyphImg} resizeMode="contain" />
           </Pressable>
           <Text style={s.brandWord} numberOfLines={1}>
             宅家看動漫
