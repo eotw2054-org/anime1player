@@ -31,7 +31,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 修正 anime1.me 播放:之前 mp4 一律 403 播唔到,因為 CDN 需要 /api 派嘅 e/p/h cookie。而家 resolveStream 會讀返呢三個 cookie,經 VideoSource 嘅 Cookie header 傳俾播放器。\n• ⚠️ 重點 smoke test:由 anime1.me 揀片 → 要真係播到(206)、上/下集、拖進度;鏡像(in/one/cc)照舊。\n• 播唔到請回報 —— 多 agent 查證咗 expo-video 會把 Cookie header 傳落 ExoPlayer,但實機先 100% 肯定。"
+      "releaseNotes": "• 新增 Gimy（動漫）來源 MVP —— 喺「設定 → 影片來源」揀「Gimy（動漫）」。最新動漫分類、單線路、直接 m3u8(HLS)。\n• ⚠️ 重點 smoke test:由 Gimy 揀片 → 要播到(m3u8/HLS)、上/下集;anime1.me 同鏡像照舊。\n• 暫時:單一預設線路、無搜尋(work 之後再加多線路切換 + 搜尋)。播唔到請回報。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

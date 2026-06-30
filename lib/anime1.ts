@@ -1,11 +1,19 @@
 // lib/anime1.ts —— Anime1 資料層（由 20260621.html 移植，純函數，原生 fetch 無 CORS）
 import { parse } from 'node-html-parser';
 
+// 影片來源（catalog 來源）。anime1 family(me/in/one/cc) + 其他站(gimy)。
+// loadList loop 經 getProviderBySite(SITES[k]) 路由去對應 provider。
 export const SITES: Record<string, string> = {
   me: 'https://anime1.me',
   in: 'https://anime1.in',
   one: 'https://anime1.one',
   cc: 'https://anime1.cc',
+  gimy: 'https://gimytv.biz',
+};
+
+/** 設定面板嘅來源顯示名（anime1 family 用 anime1.<k>,其他站自訂）。 */
+export const SITE_LABELS: Record<string, string> = {
+  gimy: 'Gimy（動漫）',
 };
 
 export interface Anime {
