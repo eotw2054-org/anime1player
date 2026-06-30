@@ -23,7 +23,7 @@ import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import * as Updates from 'expo-updates';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { K, listKey, getItem, removeItem, setStr, setJSON, setFlag } from './storage/persist';
 import {
   type Anime,
   SITES,
@@ -220,7 +220,7 @@ export default function App() {
     const active = activeFavorites(map);
     favoritesRef.current = active;
     setFavorites(active);
-    AsyncStorage.setItem('favAll', JSON.stringify(Object.values(map)));
+    setJSON(K.favAll, Object.values(map));
   };
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -302,7 +302,7 @@ export default function App() {
         lastAdvanceRef.current = Date.now();
         // 防 resume 中毒：將進度指去下一集（time 0），唔好停喺被跳過嗰集嘅結尾
         progressRef.current[favKey(c.anime)] = { url: c.nextUrl, ep: c.episodeNo, time: 0, at: Date.now() };
-        AsyncStorage.setItem('progress', JSON.stringify(progressRef.current));
+        setJSON(K.progress, progressRef.current);
         scheduleSyncPush();
         playEpisode(c.nextUrl, c.anime);
         return;
@@ -315,7 +315,7 @@ export default function App() {
     const now = Date.now();
     if (now - lastSaveRef.current > 5000) {
       lastSaveRef.current = now;
-      AsyncStorage.setItem('progress', JSON.stringify(progressRef.current));
+      setJSON(K.progress, progressRef.current);
       scheduleSyncPush();
     }
     // 播放器：~3s 心跳廣播 now-playing 俾遙控器
@@ -333,28 +333,28 @@ export default function App() {
     (async () => {
       const [s, mk, fav, favAll, fop, srcl, prog, esites, sUser, sToken, ab, po, dId, dName, dRole, dAllow] =
         await Promise.all([
-          AsyncStorage.getItem('site'),
-          AsyncStorage.getItem('marks'),
-          AsyncStorage.getItem('favorites'),
-          AsyncStorage.getItem('favAll'),
-          AsyncStorage.getItem('fsOnPlay'),
-          AsyncStorage.getItem('srcLabel'),
-          AsyncStorage.getItem('progress'),
-          AsyncStorage.getItem('enabledSites'),
-          AsyncStorage.getItem('syncUser'),
-          AsyncStorage.getItem('syncToken'),
-          AsyncStorage.getItem('autoBest'),
-          AsyncStorage.getItem('panelOpen'),
-          AsyncStorage.getItem('deviceId'),
-          AsyncStorage.getItem('deviceName'),
-          AsyncStorage.getItem('role'),
-          AsyncStorage.getItem('allowRemote'),
+          getItem(K.site),
+          getItem(K.marks),
+          getItem(K.favorites),
+          getItem(K.favAll),
+          getItem(K.fsOnPlay),
+          getItem(K.srcLabel),
+          getItem(K.progress),
+          getItem(K.enabledSites),
+          getItem(K.syncUser),
+          getItem(K.syncToken),
+          getItem(K.autoBest),
+          getItem(K.panelOpen),
+          getItem(K.deviceId),
+          getItem(K.deviceName),
+          getItem(K.role),
+          getItem(K.allowRemote),
         ]);
       // 裝置身份 + 角色
       let did = dId;
       if (!did) {
         did = 'D' + Math.random().toString(36).slice(2, 8).toUpperCase();
-        AsyncStorage.setItem('deviceId', did);
+        setStr(K.deviceId, did);
       }
       deviceIdRef.current = did;
       const dn = dName || 'Android-' + did.slice(1, 5);
@@ -415,10 +415,10 @@ export default function App() {
           const mp = mergeByRecency(progressRef.current, remote.progress || {});
           const mm = mergeByRecency(marksRef.current, remote.marks || {});
           progressRef.current = mp;
-          AsyncStorage.setItem('progress', JSON.stringify(mp));
+          setJSON(K.progress, mp);
           marksRef.current = mm;
           setMarks(mm);
-          AsyncStorage.setItem('marks', JSON.stringify(mm));
+          setJSON(K.marks, mm);
         } catch (e) {
           console.warn('[sync] startup pull failed', e);
         }
@@ -437,7 +437,7 @@ export default function App() {
       const entries = await Promise.all(
         (Object.keys(SITES) as SiteKey[]).map(async (s) => {
           try {
-            const c = await AsyncStorage.getItem('list:' + s);
+            const c = await getItem(listKey(s));
             const arr = c ? JSON.parse(c) : null;
             return [s, Array.isArray(arr) ? arr : null] as const;
           } catch {
@@ -456,7 +456,7 @@ export default function App() {
     // 先即刻顯示本地快取（若有），唔使等網路
     let hadCache = false;
     try {
-      const cached = await AsyncStorage.getItem('list:' + site);
+      const cached = await getItem(listKey(site));
       if (cached) {
         const arr = JSON.parse(cached);
         if (Array.isArray(arr) && arr.length) {
@@ -472,7 +472,7 @@ export default function App() {
       const html = await fetchHtml(SITES[site] + '/');
       const fresh = parseHomeList(html, SITES[site]);
       setLists((prev) => ({ ...prev, [site]: fresh }));
-      AsyncStorage.setItem('list:' + site, JSON.stringify(fresh));
+      setJSON(listKey(site), fresh);
     } catch (e: any) {
       // 有快取就靜靜失敗、繼續顯示舊清單；冇快取先報錯
       if (!hadCache) setListError(e?.message || '載入失敗');
@@ -690,7 +690,7 @@ export default function App() {
     const label = cur.streams[idx]?.label ?? null;
     setPreferredLabel(label);
     preferredRef.current = label;
-    if (label) AsyncStorage.setItem('srcLabel', label);
+    if (label) setStr(K.srcLabel, label);
     const ok = await loadStream(cur.streams, idx);
     setCurrent((c) => (c ? { ...c, streamIndex: idx } : c));
     if (!ok) setPlayError('此來源無法播放');
@@ -797,10 +797,10 @@ export default function App() {
       const mp = mergeByRecency(progressRef.current, remote.progress || {});
       const mm = mergeByRecency(marksRef.current, remote.marks || {});
       progressRef.current = mp;
-      AsyncStorage.setItem('progress', JSON.stringify(mp));
+      setJSON(K.progress, mp);
       marksRef.current = mm;
       setMarks(mm);
-      AsyncStorage.setItem('marks', JSON.stringify(mm));
+      setJSON(K.marks, mm);
     } catch (e) {
       console.warn('[sync] pull failed', e);
     }
@@ -843,15 +843,15 @@ export default function App() {
       const mergedProg = mergeByRecency(progressRef.current, remote.progress || {});
       const mergedMarks = mergeByRecency(marksRef.current, remote.marks || {});
       progressRef.current = mergedProg;
-      AsyncStorage.setItem('progress', JSON.stringify(mergedProg));
+      setJSON(K.progress, mergedProg);
       marksRef.current = mergedMarks;
       setMarks(mergedMarks);
-      AsyncStorage.setItem('marks', JSON.stringify(mergedMarks));
+      setJSON(K.marks, mergedMarks);
       // 記住 session
       syncTokenRef.current = token;
       setSyncUser(name);
-      AsyncStorage.setItem('syncUser', name);
-      AsyncStorage.setItem('syncToken', token);
+      setStr(K.syncUser, name);
+      setStr(K.syncToken, token);
       // 把合併結果推返雲端
       syncPush(token, { favorites: favAllArray(), progress: mergedProg, marks: mergedMarks }).catch((e) => console.warn('[sync] push failed', e));
       setSyncOpen(false);
@@ -865,8 +865,8 @@ export default function App() {
   const doLogout = () => {
     syncTokenRef.current = null;
     setSyncUser(null);
-    AsyncStorage.removeItem('syncToken');
-    AsyncStorage.removeItem('syncUser');
+    removeItem(K.syncToken);
+    removeItem(K.syncUser);
     setSyncOpen(false);
   };
 
@@ -1159,7 +1159,7 @@ export default function App() {
   const saveMarks = (next: Marks) => {
     marksRef.current = next;
     setMarks(next);
-    AsyncStorage.setItem('marks', JSON.stringify(next));
+    setJSON(K.marks, next);
     pushNow();
   };
   const setMarkField = (field: 'start' | 'end') => {
@@ -1285,7 +1285,7 @@ export default function App() {
       const on = Object.values(prev).filter(Boolean).length;
       if (prev[k] && on <= 1) return prev; // 唔俾熄淨低最後一個
       const next = { ...prev, [k]: !prev[k] };
-      AsyncStorage.setItem('enabledSites', JSON.stringify(next));
+      setJSON(K.enabledSites, next);
       return next;
     });
   };
@@ -1411,7 +1411,7 @@ export default function App() {
   const setRoleP = (r: 'player' | 'remote') => {
     setRole(r);
     roleRef.current = r;
-    AsyncStorage.setItem('role', r);
+    setStr(K.role, r);
     if (r === 'remote') {
       setFullscreen(false);
       try {
@@ -1457,7 +1457,7 @@ export default function App() {
           onPress={() => {
             const v = !panelOpen;
             setPanelOpen(v);
-            AsyncStorage.setItem('panelOpen', v ? '1' : '0');
+            setFlag(K.panelOpen, v);
           }}>
           <Text style={s.panelToggleText}>{panelOpen ? '▴ 收起' : '▾ 顯示'}</Text>
         </Pressable>
@@ -1577,7 +1577,7 @@ export default function App() {
         const v = !autoBest;
         setAutoBest(v);
         autoBestRef.current = v;
-        AsyncStorage.setItem('autoBest', v ? '1' : '0');
+        setFlag(K.autoBest, v);
         // 即開即生效：若有播緊嘅集，立即探測 + 切去最快來源
         if (v) applyBestSource();
       }}>
@@ -1595,7 +1595,7 @@ export default function App() {
       onPress={() => {
         const v = !fsOnPlay;
         setFsOnPlay(v);
-        AsyncStorage.setItem('fsOnPlay', v ? '1' : '0');
+        setFlag(K.fsOnPlay, v);
       }}>
       <Text style={s.toggleLabel}>播放即全螢幕</Text>
       <View style={[s.switch, fsOnPlay && s.switchOn]}>
@@ -1882,7 +1882,7 @@ export default function App() {
             const v = !allowRemote;
             setAllowRemote(v);
             allowRemoteRef.current = v;
-            AsyncStorage.setItem('allowRemote', v ? '1' : '0');
+            setFlag(K.allowRemote, v);
           }}>
           <View style={[s.spDot, !allowRemote && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
           <Text style={[s.spOptText, allowRemote && s.spOptTextOn]}>允許遠端遙控（被其他裝置控制）</Text>
@@ -1904,7 +1904,7 @@ export default function App() {
             onChangeText={(t) => {
               const v = t.slice(0, 64);
               setDeviceName(v);
-              AsyncStorage.setItem('deviceName', v);
+              setStr(K.deviceName, v);
             }}
             placeholder="自定義名稱（撳 OK 打字）"
             placeholderTextColor={C.muted}
@@ -2209,7 +2209,7 @@ export default function App() {
             onPress={() => {
               const v = !panelOpen;
               setPanelOpen(v);
-              AsyncStorage.setItem('panelOpen', v ? '1' : '0');
+              setFlag(K.panelOpen, v);
             }}>
             <Text style={s.panelToggleText}>{panelOpen ? '▴ 收起' : '▾ 顯示'}</Text>
           </Pressable>
