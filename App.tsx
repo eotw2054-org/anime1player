@@ -109,6 +109,7 @@ function AppMain() {
   const [ctrlShown, setCtrlShown] = useState(true);
   const [panelOpen, setPanelOpen] = useState(true); // 打直版控制區手動收合
   const [srcOpen, setSrcOpen] = useState(false);
+  const [lineSelOpen, setLineSelOpen] = useState(false); // 分流（線路）下拉
   const [siteOpen, setSiteOpen] = useState(false);
   const [preferredLabel, setPreferredLabel] = useState<string | null>(null);
   const preferredRef = useRef<string | null>(null);
@@ -1455,28 +1456,18 @@ function AppMain() {
   );
 
   // 分流（線路）選擇器：>1 條先顯示（單線路如 anime1 / 去重後嘅 gimytv 唔出）
-  const lineTabs = lines.length > 1 && (
-    <FlatList
-      style={s.rangeRow}
-      data={lines}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      keyExtractor={(l, i) => l.label + '-' + i}
-      extraData={[lineIndex, focusKey]}
-      renderItem={({ item, index }) => {
-        const on = index === lineIndex;
-        return (
-          <Pressable
-            {...focusProps('line-' + index)}
-            style={[s.range, on && s.rangeOn, focused('line-' + index)]}
-            onPress={() => switchLine(index)}>
-            <Text style={[s.rangeText, on && s.rangeTextOn]} numberOfLines={1}>
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      }}
-    />
+  // 分流（線路）下拉 —— 同 anime1 嘅片源下拉一致（gimy 多線路用呢個）
+  const lineSelBtn = lines.length > 1 && (
+    <Pressable
+      {...focusProps('line-sel')}
+      style={[s.srcBar, focused('line-sel')]}
+      onPress={() => setLineSelOpen(true)}>
+      <Text style={s.srcBars}>≡</Text>
+      <Text style={s.srcName} numberOfLines={1}>
+        {lines[lineIndex]?.label ?? '分流'}
+      </Text>
+      <Text style={s.srcCaret}>▾</Text>
+    </Pressable>
   );
 
   const epGridInner = (
@@ -1499,7 +1490,7 @@ function AppMain() {
   );
 
   // ===== 可組合嘅控制零件（打橫上下排，打直就兩兩並排）=====
-  const srcSelectorBtn = current && current.streams.length > 0 && (
+  const srcSelectorBtn = current && current.streams.length > 1 && (
     <Pressable
       {...focusProps('src-sel')}
       style={[s.srcBar, focused('src-sel')]}
@@ -1812,6 +1803,37 @@ function AppMain() {
     </Pressable>
   );
 
+  const lineSelMenu = lineSelOpen && (
+    <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setLineSelOpen(false)}>
+      <Pressable focusable={false} style={s.srcMenu} onPress={() => {}}>
+        <Text style={s.srcMenuTitle}>選擇分流線路</Text>
+        <ScrollView>
+          {lines.map((ln, i) => {
+            const on = i === lineIndex;
+            return (
+              <Pressable
+                key={ln.label + '-' + i}
+                {...focusProps('ln-' + i)}
+                hasTVPreferredFocus={i === lineIndex}
+                style={[s.srcItem, on && s.srcItemOn, focused('ln-' + i)]}
+                onPress={() => {
+                  switchLine(i);
+                  setLineSelOpen(false);
+                }}>
+                <Text style={s.srcBars}>≡</Text>
+                <Text style={[s.srcItemText, on && s.srcItemTextOn]} numberOfLines={1}>
+                  {ln.label}
+                </Text>
+                <View style={{ flex: 1 }} />
+                {on && <Text style={s.srcItemCk}>✓</Text>}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </Pressable>
+    </Pressable>
+  );
+
   // ========= 雲端同步登入 =========
   const syncModal = syncOpen && (
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSyncOpen(false)}>
@@ -1998,7 +2020,7 @@ function AppMain() {
         {selected && (
           <View style={s.rightRail}>
             {pickerHeader}
-            {lineTabs}
+            {lineSelBtn}
             {rangeTabs}
             {loadingChapters ? (
               <ActivityIndicator color={C.cyan} style={{ marginTop: 16 }} />
@@ -2014,7 +2036,7 @@ function AppMain() {
 
         {playerHost}
         {siteMenu}
-        {sourceMenu}
+        {sourceMenu}{lineSelMenu}
         {syncModal}
         {settingsModal}
         {updateModal}
@@ -2094,7 +2116,7 @@ function AppMain() {
       {/* 固定控制區：揀咗動畫時鎖喺頂，唔跟清單向上捲；可用「收起 / 顯示」手動收合 */}
       {selected && panelOpen && (
         <View style={s.lockedControls}>
-          {lineTabs}
+          {lineSelBtn}
           {rangeTabs}
           {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridPort}
         </View>
@@ -2117,7 +2139,7 @@ function AppMain() {
 
       {playerHost}
       {siteMenu}
-      {sourceMenu}
+      {sourceMenu}{lineSelMenu}
       {syncModal}
       {settingsModal}
       {updateModal}
