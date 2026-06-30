@@ -22,17 +22,9 @@ import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer, type VideoSource } from 'expo-video';
 import * as Updates from 'expo-updates';
 import { K, listKey, getItem, removeItem, setStr, setJSON, setFlag } from './storage/persist';
-import {
-  type Anime,
-  SITES,
-  fetchHtml,
-  parseHomeList,
-  buildChapters,
-  parseEpisode,
-  resolveSource,
-  isPlayable,
-} from './lib/anime1';
-import { getAdRanges, adSkipTarget, type AdRange } from './lib/adskip';
+import { type Anime, SITES, isPlayable } from './lib/anime1';
+import { adSkipTarget, type AdRange } from './lib/adskip';
+import { getProvider, getProviderBySite } from './lib/sources/registry';
 import {
   signup as syncSignup,
   login as syncLogin,
@@ -461,8 +453,7 @@ export default function App() {
     if (!hadCache) setLoadingList(true);
     setListError(null);
     try {
-      const html = await fetchHtml(SITES[site] + '/');
-      const fresh = parseHomeList(html, SITES[site]);
+      const fresh = await getProviderBySite(SITES[site]).loadCatalog(SITES[site]);
       setLists((prev) => ({ ...prev, [site]: fresh }));
       setJSON(listKey(site), fresh);
     } catch (e: any) {
@@ -503,27 +494,10 @@ export default function App() {
         playEpisode(url, a);
       }
     };
-    if (a.num && a.num > 0 && a.num <= 2000) {
-      const chapters = buildChapters(a.site, a.slug, a.num);
-      setChapters(chapters);
-      playFirst(chapters[0]?.url);
-      return;
-    }
     setLoadingChapters(true);
-    setChapters([]);
     try {
-      const html = await fetchHtml(a.site + '/' + a.slug + '/');
-      const re = new RegExp('href="(/' + a.slug + '-[0-9a-z-]+)"', 'g');
-      const seen = new Set<string>();
-      const out: Chapter[] = [];
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(html))) {
-        if (!seen.has(m[1])) {
-          seen.add(m[1]);
-          out.push({ ep: out.length + 1, url: a.site + m[1] });
-        }
-      }
-      const chapters = out.length ? out : [{ ep: 1, url: a.latestUrl }];
+      const lines = await getProvider(a).getEpisodes(a);
+      const chapters = lines[0]?.episodes ?? [{ ep: 1, url: a.latestUrl }];
       setChapters(chapters);
       playFirst(chapters[0]?.url);
     } catch {
@@ -540,7 +514,7 @@ export default function App() {
     setResolving(true);
     setPlayError(null);
     try {
-      const info = await parseEpisode(url);
+      const info = await getProvider(anime).getEpisode(url);
       if (!info.streams.length) throw new Error('找唔到播放器來源');
       // 切換「影片」（換咗一套）先做最佳片源探測；同一套換 chapter 唔再 detect（基本上唔會轉）
       const prevAnime = currentRef.current?.anime;
@@ -561,7 +535,7 @@ export default function App() {
       }
       // 喺 replace 之前擷取呢套嘅開頭（readyToPlay 用 startAtRef，唔靠未更新嘅 currentRef）
       startAtRef.current = marksRef.current[favKey(anime)]?.start ?? null;
-      const ok = await loadStream(streams, idx);
+      const ok = await loadStream(streams, idx, anime);
       setCurrent({
         anime,
         episodeUrl: url,
@@ -626,7 +600,7 @@ export default function App() {
         try {
           resumeAtRef.current = player.currentTime;
         } catch (e) { if (__DEV__) console.warn(e); }
-        const ok = await loadStream(timed, 0);
+        const ok = await loadStream(timed, 0, c.anime);
         preferredRef.current = best.label; // 同套之後嘅 chapter 沿用
         if (!ok) setPlayError('最佳來源無法播放，試下手動切換');
       }
@@ -640,8 +614,9 @@ export default function App() {
     }
   }
 
-  async function loadStream(streams: Current['streams'], idx: number): Promise<boolean> {
-    const src = await resolveSource(streams[idx].embedUrl);
+  async function loadStream(streams: Current['streams'], idx: number, anime: Anime): Promise<boolean> {
+    const provider = getProvider(anime);
+    const src = await provider.resolveStream(streams[idx].embedUrl);
     if (!isPlayable(src)) return false;
     let referer = '';
     try {
@@ -659,7 +634,11 @@ export default function App() {
     player.replace(source);
     // 背景偵測廣告（唔阻塞播放）；用同播放一致嘅 headers 避免被 CDN 擋
     if (src!.includes('.m3u8')) {
-      getAdRanges(src!, { 'User-Agent': UA, Referer: referer })
+      // 廣告偵測係 provider 嘅 optional capability：冇實作就唔跳（唔會誤跳真內容）
+      (provider.adDetector
+        ? provider.adDetector(src!, { 'User-Agent': UA, Referer: referer })
+        : Promise.resolve([])
+      )
         .then((ranges) => {
           adRangesRef.current = ranges;
           if (ranges.length) console.log(`[adskip] 偵測到 ${ranges.length} 段廣告`, ranges);
@@ -683,7 +662,7 @@ export default function App() {
     setPreferredLabel(label);
     preferredRef.current = label;
     if (label) setStr(K.srcLabel, label);
-    const ok = await loadStream(cur.streams, idx);
+    const ok = await loadStream(cur.streams, idx, cur.anime);
     setCurrent((c) => (c ? { ...c, streamIndex: idx } : c));
     if (!ok) setPlayError('此來源無法播放');
     setResolving(false);
