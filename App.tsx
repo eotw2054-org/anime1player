@@ -47,7 +47,8 @@ import {
 import { C } from './theme';
 import { s } from './styles';
 import { type SiteKey, type Tab, type Chapter, type Current, type Progress, type Marks } from './lib/types';
-import { UA, favKey } from './lib/format';
+import { UA, favKey, fmtTime } from './lib/format';
+import { isStale, livePosition, progressPct } from './lib/remoteProgress';
 import { setMark, clearMark } from './lib/marks';
 import { buildSections, buildEpBuckets } from './lib/catalog';
 import { favMapFromArray, activeFavorites, toggleFavEntry } from './lib/favorites';
@@ -1701,17 +1702,14 @@ export default function App() {
       wsSend({ type: 'cmd', targetId: targetIdRef.current, action, value });
     };
     const st = remoteState;
-    const stale = st && Date.now() - st._recvAt > 6000;
+    const now = Date.now();
+    const stale = isStale(st, now);
     const dur = st?.duration || 0;
-    const live = st && !stale ? (st.playing ? st.position + (Date.now() - st._recvAt) / 1000 : st.position) : 0;
+    const live = livePosition(st, now);
     const pos = rsDrag != null && rsBarWRef.current > 0 ? (rsDrag / rsBarWRef.current) * dur : live;
-    const pct = dur > 0 ? Math.min(1, Math.max(0, pos / dur)) : 0;
+    const pct = progressPct(pos, dur);
     const target = remotePlayers.find((p) => p.deviceId === targetId);
-    const fmt = (s: number) => {
-      s = Math.max(0, Math.floor(s));
-      const m = Math.floor(s / 60);
-      return `${m}:${String(s % 60).padStart(2, '0')}`;
-    };
+    const fmt = fmtTime;
     return (
       <View style={s.remotePanel}>
         {!syncUser ? (
