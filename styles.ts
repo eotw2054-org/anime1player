@@ -42,7 +42,7 @@ export function makeStyles(C: Theme) {
   glyphMini: { width: 30, height: 30, borderRadius: 9, backgroundColor: C.rose, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   glyphMiniText: { color: '#fff', fontSize: 12, fontWeight: '900' },
   glyphMiniImg: { width: 32, height: 32, borderRadius: 16, marginBottom: 10 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 12 },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
   collapseBtn: {
     width: 28,
     height: 28,
@@ -165,7 +165,7 @@ export function makeStyles(C: Theme) {
   collectTextOn: { color: '#fff' },
 
   // ===== Right rail (episodes) =====
-  rightRail: { width: 322, backgroundColor: C.surface, borderLeftWidth: 1, borderLeftColor: C.line, padding: 14, gap: 10 },
+  rightRail: { width: 161, backgroundColor: C.surface, borderLeftWidth: 1, borderLeftColor: C.line, padding: 14, gap: 10 },
   pickerHead: { flexDirection: 'row', alignItems: 'baseline' },
   pickerTitle: { color: C.text, fontSize: 15, fontWeight: '800' },
   pickerCount: { color: C.muted, fontSize: 12, fontWeight: '600' },
