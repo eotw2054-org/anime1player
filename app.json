@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• ⚙ 設定:影片來源(可多選)改用 on/off 開關;裝置名稱輸入框加返「裝置名稱」標籤。"
+      "releaseNotes": "• ▶ 播放器:「收藏」掣由全螢幕掣下面移到左邊,同全螢幕掣排成一行。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
