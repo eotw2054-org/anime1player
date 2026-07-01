@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 遙控面板指引更新:提示去「設定 › 允許遙控播放」+ 登入同一帳戶。"
+      "releaseNotes": "• ⚙ 設定 › 遙控:移除多餘嘅「本機角色」切換;「允許遙控播放」改用 on/off 開關。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
