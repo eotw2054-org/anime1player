@@ -1271,31 +1271,24 @@ function AppMain() {
   const allSites = Object.keys(SITES);
   const siteSummary = enabledCount === allSites.length ? '全部來源' : `${enabledCount} / ${allSites.length} 來源`;
 
-  // [A1] 品牌按鈕：撳開來源篩選；右側標籤顯示已選來源數
-  const SiteBox = (
-    <Pressable
-      {...focusProps('site-cur')}
-      style={s.sitePd}
-      onPress={() => setSiteOpen((v) => !v)}>
-      <View style={[s.spCur, s.spBrand, siteOpen && s.spCurOpen, focused('site-cur')]}>
-        <View style={s.spDot} />
-        <Text style={s.spName} numberOfLines={1}>
-          {siteSummary}
-        </Text>
-        <Text style={s.spCar}>{siteOpen ? '▴' : '▾'}</Text>
-      </View>
-    </Pressable>
-  );
-
+  // 側欄頂:logo + 宅家看動漫 + ⚙ 設定 + ☁ 雲端（來源篩選已入 ⚙，撳 logo 睇關於）
   const headerBar = (collapse: boolean) => (
     <View style={s.brandRow}>
       <Pressable
         {...focusProps('a1-filter')}
         style={[s.glyph, focused('a1-filter')]}
         onPress={() => setSiteOpen((v) => !v)}>
-        <Text style={s.glyphText}>A1</Text>
+        <Image source={require('./assets/logo.png')} style={s.glyphImg} resizeMode="contain" />
       </Pressable>
-      {SiteBox}
+      <Text style={[s.brandWord, { flex: 1 }]} numberOfLines={1}>
+        宅家看動漫
+      </Text>
+      <Pressable
+        {...focusProps('settings')}
+        style={[s.iconBtn, focused('settings')]}
+        onPress={() => setSettingsOpen(true)}>
+        <Text style={s.iconBtnText}>⚙</Text>
+      </Pressable>
       <Pressable
         {...focusProps('sync')}
         style={[s.cloudBtn, syncUser && s.cloudBtnOn, focused('sync')]}
@@ -2098,9 +2091,7 @@ function AppMain() {
             {...focusProps('sb-open')}
             style={[s.railBar, focused('sb-open')]}
             onPress={() => setSidebarOpen(true)}>
-            <View style={s.glyphMini}>
-              <Text style={s.glyphMiniText}>A1</Text>
-            </View>
+            <Image source={require('./assets/logo.png')} style={s.glyphMiniImg} resizeMode="contain" />
             <Text style={s.railIcon}>☰</Text>
           </Pressable>
         )}

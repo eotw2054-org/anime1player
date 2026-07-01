@@ -41,6 +41,7 @@ export function makeStyles(C: Theme) {
   glyphText: { color: '#fff', fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
   glyphMini: { width: 30, height: 30, borderRadius: 9, backgroundColor: C.rose, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   glyphMiniText: { color: '#fff', fontSize: 12, fontWeight: '900' },
+  glyphMiniImg: { width: 32, height: 32, borderRadius: 16, marginBottom: 10 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 12 },
   collapseBtn: {
     width: 28,
