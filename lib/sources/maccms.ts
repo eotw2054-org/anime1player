@@ -10,6 +10,7 @@ import { type SourceProvider, type PlayLine } from './types';
 import { type Anime } from '../anime1';
 import { type Chapter } from '../types';
 import { UA } from '../format';
+import { getAdRanges } from '../adskip';
 
 const MAX_PAGES = 5; // 載最新幾頁(~300 套),有 cache,夠瀏覽
 
@@ -255,7 +256,10 @@ export function createMacCmsProvider(cfg: MacCmsConfig): SourceProvider {
     async resolveStream(embedUrl: string): Promise<string | null> {
       return resolvePlayUrl(embedUrl, base);
     },
-    // adDetector 唔設：CDN 同 anime1 唔同。
+    // 直連 m3u8 線路(如 清晰雲/modu)同 anime1 一樣 server-side stitch 廣告
+    // (外來 path-id 段 + #EXT-X-DISCONTINUITY)→ 重用 getAdRanges。
+    // 無廣告 / 抽唔到 m3u8 嘅線路會回 [](唔會誤跳正片)。
+    adDetector: (m3u8Url, headers) => getAdRanges(m3u8Url, headers),
   };
 }
 

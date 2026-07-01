@@ -1,4 +1,5 @@
 import { adSkipTarget, detectAdRanges, type AdRange } from '../adskip';
+import { GIMY_MODU_ADS, GIMY_NOADS, MODU_ADS_URL, NOADS_URL } from './fixtures/gimyPlaylists';
 
 describe('adSkipTarget', () => {
   const ranges: AdRange[] = [{ start: 10, end: 20, reason: 'x' }];
@@ -66,5 +67,26 @@ describe('detectAdRanges', () => {
 
   it('returns [] for an empty / segment-less playlist', () => {
     expect(detectAdRanges('#EXTM3U\n#EXT-X-ENDLIST', mediaUrl)).toEqual([]);
+  });
+});
+
+// 真實 gimy playlist fixture（2026-07-01 抽自 gimyplus 仙逆）—— 鎖住 maccms 廣告偵測行為。
+describe('detectAdRanges — gimy real playlists', () => {
+  it('偵測到 modu(清晰雲)嘅 stitched 廣告', () => {
+    const ranges = detectAdRanges(GIMY_MODU_ADS, MODU_ADS_URL);
+    expect(ranges.length).toBeGreaterThanOrEqual(4);
+    const adSecs = ranges.reduce((a, r) => a + (r.end - r.start), 0);
+    expect(adSecs).toBeGreaterThan(30);
+    // 廣告段來自外來 path-id，唔會係正片 id 6aJSbktn
+    for (const r of ranges) expect(r.reason).not.toContain('6aJSbktn');
+  });
+
+  it('無 stitched 廣告嘅 playlist(xluuss 速播雲)回 []', () => {
+    expect(detectAdRanges(GIMY_NOADS, NOADS_URL)).toEqual([]);
+  });
+
+  it('已知正片時間點(100s)唔喺任何廣告區間內', () => {
+    const ranges = detectAdRanges(GIMY_MODU_ADS, MODU_ADS_URL);
+    expect(ranges.some((r) => 100 >= r.start && 100 < r.end)).toBe(false);
   });
 });
