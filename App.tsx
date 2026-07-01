@@ -1504,17 +1504,20 @@ function AppMain() {
     </Pressable>
   );
 
-  // 主要來源（來源站）下拉 —— 同名分組有多過一個來源先顯示;揀咗 → openAnime 跨站重開
-  const srcSiteBtn = titleAnime && playerSources.length > 1 && (
+  // 主要來源（來源站）—— 一定顯示(連單一來源都顯示,等用家見到播緊邊個站);
+  // 得一個來源就淨係顯示,唔可撳;有多過一個先出 ▾ + 撳開下拉,揀咗 → openAnime 跨站重開
+  const multiSource = playerSources.length > 1;
+  const srcSiteBtn = titleAnime && (
     <Pressable
       {...focusProps('site-sel')}
+      disabled={!multiSource}
       style={[s.srcBar, focused('site-sel')]}
       onPress={() => setSiteSelOpen(true)}>
       <Text style={s.srcBars}>☁</Text>
       <Text style={s.srcName} numberOfLines={1}>
         {siteLabel(titleAnime.site)}
       </Text>
-      <Text style={s.srcCaret}>▾</Text>
+      {multiSource && <Text style={s.srcCaret}>▾</Text>}
     </Pressable>
   );
 
@@ -2148,6 +2151,7 @@ function AppMain() {
           {srcSelectorBtn}
           {lineSelBtn}
           {resolving && <ActivityIndicator color={C.cyan} style={{ marginLeft: 4 }} />}
+          <View style={{ flex: 1 }} />
           <Pressable
             {...focusProps('panel-toggle')}
             style={[s.panelToggle, focused('panel-toggle')]}

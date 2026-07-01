@@ -1,18 +1,11 @@
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { type Anime, SITES } from '../lib/anime1';
+import { Pressable, Text, View } from 'react-native';
+import { type Anime } from '../lib/anime1';
 import { type AnimeGroup } from '../lib/catalog';
 import { favKey } from '../lib/format';
-import { type SiteKey } from '../lib/types';
 import { useStyles } from '../ui-theme';
 
-/** 來源短名:anime1 family → anime1.<k>;其他站 → 直接 key（gimyplus…）。 */
-function siteShort(site: string): string {
-  const k = (Object.keys(SITES) as SiteKey[]).find((kk) => SITES[kk] === site);
-  if (!k) return site;
-  return k.startsWith('gimy') ? k : 'anime1.' + k;
-}
-
-// 側欄清單一行：同名跨來源併成一行，片名 + 每個來源一粒可撳 chip + 心心收藏。
+// 側欄清單一行：片名 + 狀態（集數/連載中）。來源唔喺清單顯示（騰空間）—— 撳一下用第一個來源,
+// 之後喺播放器嘅「主要來源」下拉跨站切換。
 export default function AnimeRow({
   group,
   fav,
@@ -36,40 +29,20 @@ export default function AnimeRow({
   const pk = favKey(primary);
   return (
     <View style={[s.row, hasActive && s.rowActive]}>
-      <View style={s.rowMain}>
-        <Pressable
-          {...focusProps('row-' + pk)}
-          style={focused('row-' + pk) && s.rowFocused}
-          onPress={() => onOpen(primary)}>
-          <Text style={[s.rowName, hasActive && s.rowNameActive]} numberOfLines={1}>
-            {hasActive ? '● ' : ''}
-            {primary.name}
+      <Pressable
+        {...focusProps('row-' + pk)}
+        style={[s.rowMain, focused('row-' + pk) && s.rowFocused]}
+        onPress={() => onOpen(primary)}>
+        <Text style={[s.rowName, hasActive && s.rowNameActive]} numberOfLines={1}>
+          {hasActive ? '● ' : ''}
+          {primary.name}
+        </Text>
+        {!!primary.cntText && (
+          <Text style={s.rowMeta} numberOfLines={1}>
+            {primary.cntText}
           </Text>
-        </Pressable>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={s.rowSrcRow}
-          contentContainerStyle={s.rowSrcRowContent}
-          keyboardShouldPersistTaps="handled">
-          {sources.map((src) => {
-            const sk = favKey(src);
-            const on = activeOf(src);
-            return (
-              <Pressable
-                key={sk}
-                {...focusProps('src-' + sk)}
-                style={[s.rowSrcChip, on && s.rowSrcChipOn, focused('src-' + sk)]}
-                onPress={() => onOpen(src)}>
-                <Text style={[s.rowSrcText, on && s.rowSrcTextOn]} numberOfLines={1}>
-                  {src.cntText ? src.cntText + ' · ' : ''}
-                  {siteShort(src.site)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
+        )}
+      </Pressable>
       <Pressable
         {...focusProps('heart-' + pk)}
         hitSlop={8}
