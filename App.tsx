@@ -1511,7 +1511,7 @@ function AppMain() {
     <Pressable
       {...focusProps('site-sel')}
       disabled={!multiSource}
-      style={[s.srcBar, focused('site-sel')]}
+      style={[s.srcBar, !multiSource && s.srcBarOff, focused('site-sel')]}
       onPress={() => setSiteSelOpen(true)}>
       <Text style={s.srcBars}>☁</Text>
       <Text style={s.srcName} numberOfLines={1}>
