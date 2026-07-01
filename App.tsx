@@ -1421,7 +1421,7 @@ function AppMain() {
   );
 
   // 集數分段 + 格
-  const EP_COLS = isLandscape ? 4 : 5;
+  const EP_COLS = 5;
   const EP_GAP = 6;
   const epItemW = gridW > 0 ? (gridW - EP_GAP * (EP_COLS - 1)) / EP_COLS : 0;
 
