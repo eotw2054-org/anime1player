@@ -2169,7 +2169,8 @@ function AppMain() {
       )}
 
       {!fullscreen && (role === 'remote' ? remotePanel : playerBlock)}
-      {/* 控制行：片名(走馬燈，填滿空間) · 分流條 · 收起 同一行（角色 toggle 已搬上頂 bar）*/}
+      {searchFavRow}
+      {/* 控制行：分流條 · 收起 同一行（角色 toggle 已搬上頂 bar）*/}
       {!fullscreen && selected && (
         <View style={s.portCtrlRow}>
           {srcSiteBtn}
@@ -2198,7 +2199,6 @@ function AppMain() {
           {loadingChapters ? <ActivityIndicator color={C.cyan} style={{ marginVertical: 12 }} /> : epGridPort}
         </View>
       )}
-      {searchFavRow}
       {selected && <View style={s.divider} />}
 
       <SectionList

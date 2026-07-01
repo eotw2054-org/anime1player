@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• ⚙ 設定分成兩個分頁:「播放設定」(播放偏好 · 影片來源 · 遙控) 同「外觀主題」。"
+      "releaseNotes": "• 搜尋 / 已收藏 / 我的最愛 一行移到播放器下面(「收起 / 顯示」上面),搵片更就手。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
