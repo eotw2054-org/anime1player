@@ -1984,23 +1984,22 @@ function AppMain() {
               })}
 
               <Text style={[s.syncSub, { marginTop: 14 }]}>遙控</Text>
-              <Text style={s.spVer}>本機角色（遙控器 = 用手機控制投影機）</Text>
-              <View style={{ marginTop: 4, marginBottom: 10, alignItems: 'flex-start' }}>{roleToggle}</View>
               <Pressable
                 ref={(r) => {
                   a1Refs.current['allow-remote'] = r;
                 }}
                 {...focusProps('allow-remote')}
-                style={[s.spOpt, allowRemote && s.spOptOn, focused('allow-remote')]}
+                style={[s.toggleRow, focused('allow-remote')]}
                 onPress={() => {
                   const v = !allowRemote;
                   setAllowRemote(v);
                   allowRemoteRef.current = v;
                   setFlag(K.allowRemote, v);
                 }}>
-                <View style={[s.spDot, !allowRemote && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
-                <Text style={[s.spOptText, allowRemote && s.spOptTextOn]}>允許遙控播放</Text>
-                <Text style={s.spOptCk}>{allowRemote ? '✓' : ''}</Text>
+                <Text style={s.toggleLabel}>允許遙控播放</Text>
+                <View style={[s.switch, allowRemote && s.switchOn]}>
+                  <View style={[s.knob, allowRemote && s.knobOn]} />
+                </View>
               </Pressable>
               {/* D-pad 目標:撳 OK → focus 輸入框,彈系統鍵盤;TextInput 本身 focusable=false 免重複搶焦 */}
               <Pressable
