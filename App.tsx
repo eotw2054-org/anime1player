@@ -1314,7 +1314,7 @@ function AppMain() {
 
   const searchBox = (
     <TextInput
-      style={s.search}
+      style={[s.search, s.searchFlex]}
       placeholder="🔍  搜尋動畫…"
       placeholderTextColor={C.muted}
       value={query}
@@ -1542,7 +1542,7 @@ function AppMain() {
         setPanelOpen(v);
         setFlag(K.panelOpen, v);
       }}
-      favFilter={isLandscape ? favFilterBtn : null}
+      favFilter={null}
       focusProps={focusProps}
       focused={focused}
     />
@@ -2067,7 +2067,10 @@ function AppMain() {
           <View style={s.sidebar}>
             <View style={s.sbTop}>
               {headerBar(true)}
-              {searchBox}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                {searchBox}
+                {favFilterBtn}
+              </View>
             </View>
             {loadingList && !sections.length ? (
               <ActivityIndicator color={C.cyan} style={{ marginTop: 24 }} />
