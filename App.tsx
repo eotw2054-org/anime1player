@@ -1974,11 +1974,12 @@ function AppMain() {
                       a1Refs.current['site-' + k] = r;
                     }}
                     {...focusProps('site-' + k)}
-                    style={[s.spOpt, on && s.spOptOn, focused('site-' + k)]}
+                    style={[s.toggleRow, focused('site-' + k)]}
                     onPress={() => toggleSite(k)}>
-                    <View style={[s.spDot, !on && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
-                    <Text style={[s.spOptText, on && s.spOptTextOn]}>{SITE_LABELS[k] ?? 'anime1.' + k}</Text>
-                    <Text style={s.spOptCk}>{on ? '✓' : ''}</Text>
+                    <Text style={s.toggleLabel}>{SITE_LABELS[k] ?? 'anime1.' + k}</Text>
+                    <View style={[s.switch, on && s.switchOn]}>
+                      <View style={[s.knob, on && s.knobOn]} />
+                    </View>
                   </Pressable>
                 );
               })}
@@ -2001,6 +2002,7 @@ function AppMain() {
                   <View style={[s.knob, allowRemote && s.knobOn]} />
                 </View>
               </Pressable>
+              <Text style={[s.syncSub, { marginTop: 12 }]}>裝置名稱</Text>
               {/* D-pad 目標:撳 OK → focus 輸入框,彈系統鍵盤;TextInput 本身 focusable=false 免重複搶焦 */}
               <Pressable
                 ref={(r) => {
