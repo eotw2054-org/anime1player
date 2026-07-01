@@ -362,6 +362,13 @@ export function makeStyles(C: Theme) {
   roleSegOn: { backgroundColor: C.roleSegOnBg },
   roleSegText: { color: C.muted, fontSize: 12, fontWeight: '800' },
   roleSegTextOn: { color: C.cyan },
+
+  // ⚙ 設定分頁（播放設定 | 外觀主題）
+  setTabs: { flexDirection: 'row', gap: 8, marginTop: 6, marginBottom: 4 },
+  setTab: { flex: 1, height: 34, borderRadius: 9, borderWidth: 1, borderColor: C.line2, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
+  setTabOn: { backgroundColor: C.chipOnBg, borderColor: C.chipOnBorder },
+  setTabText: { color: C.muted, fontSize: 13, fontWeight: '800' },
+  setTabTextOn: { color: C.cyan },
   remotePanel: { backgroundColor: C.surface, borderRadius: 18, marginHorizontal: 10, marginTop: 8, padding: 14, gap: 8 },
   remoteHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   remoteTag: { color: C.text, fontSize: 14, fontWeight: '900' },
