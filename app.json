@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 打橫收起左邊側欄時,播放器上面嘅標題列(來源/分流/角色)都一齊收埋,睇片更乾淨。"
+      "releaseNotes": "• 打橫選集欄每行顯示 7 集;選集格固定闊度,唔再受左邊側欄伸縮影響。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
