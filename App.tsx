@@ -2100,7 +2100,8 @@ function AppMain() {
 
         {/* 中間：標題 + 播放器（遙控器模式換成遙控面板）*/}
         <View style={s.playerCol}>
-          {titleBar}
+          {/* 側欄收起時,連播放器上面嘅標題列(來源/分流/角色)都收埋,player 更乾淨 */}
+          {sidebarOpen && titleBar}
           {role === 'remote' ? remotePanel : playerBlock}
           {playError && <Text style={s.err}>{playError}</Text>}
         </View>
