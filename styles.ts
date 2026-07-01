@@ -182,7 +182,7 @@ export function makeStyles(C: Theme) {
 
   // settings row (來源)
   settingsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  searchFavRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  searchFavRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 8, marginHorizontal: 10 },
   searchFlex: { flex: 1, marginBottom: 0 },
   pairRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   srcBar: {
