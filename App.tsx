@@ -1975,6 +1975,8 @@ function AppMain() {
               })}
 
               <Text style={[s.syncSub, { marginTop: 14 }]}>遙控</Text>
+              <Text style={s.spVer}>本機角色（遙控器 = 用手機控制投影機）</Text>
+              <View style={{ marginTop: 4, marginBottom: 10, alignItems: 'flex-start' }}>{roleToggle}</View>
               <Pressable
                 ref={(r) => {
                   a1Refs.current['allow-remote'] = r;
