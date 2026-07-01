@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 打橫模式側欄頂:改用新 logo + 顯示「宅家看動漫」+ 加返 ⚙ 設定入口。"
+      "releaseNotes": "• ⚙ 設定 → 播放設定 → 遙控:可直接切換「播放器 / 遙控器」,打橫都用得(唔使等播片先出)。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
