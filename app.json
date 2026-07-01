@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 設定嘅「允許遠端遙控（被其他裝置控制）」改名做「允許遙控播放」。"
+      "releaseNotes": "• 遙控面板指引更新:提示去「設定 › 允許遙控播放」+ 登入同一帳戶。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

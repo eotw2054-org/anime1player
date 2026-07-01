@@ -65,7 +65,7 @@ export default function RemotePanel(props: {
         <View style={s.remoteCenter}>
           {!titleAnime && roleToggle}
           <Text style={s.remoteHint}>未連接到播放器</Text>
-          <Text style={s.remoteSub}>在另一部裝置開啟 App、設為「播放器」、登入同一帳戶</Text>
+          <Text style={s.remoteSub}>在另一個裝置 › 設定 › 打開「允許遙控播放」，並登入同一帳戶</Text>
           <Pressable {...focusProps('rc-rescan')} style={[s.syncBtn, focused('rc-rescan')]} onPress={onRescan}>
             <Text style={s.syncBtnText}>🔄 重新搜尋</Text>
           </Pressable>
