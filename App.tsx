@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   AppState,
   BackHandler,
   DeviceEventEmitter,
@@ -490,6 +491,14 @@ function AppMain() {
     pushNow();
   }
   const toggleFavGroup = (g: AnimeGroup) => toggleFavName(g.primary.name, g.primary);
+  // 加收藏:即做;取消收藏:先彈確認視窗(免誤撳)
+  const requestToggleFav = (isFaved: boolean, name: string, doIt: () => void) => {
+    if (!isFaved) return doIt();
+    Alert.alert('取消收藏', `確定要取消收藏「${name}」?`, [
+      { text: '取消', style: 'cancel' },
+      { text: '取消收藏', style: 'destructive', onPress: doIt },
+    ]);
+  };
 
   async function openAnime(a: Anime) {
     setSelected(a);
@@ -1326,7 +1335,7 @@ function AppMain() {
       fav={favNameSet.has(group.key)}
       activeOf={(a) => selected != null && favKey(selected) === favKey(a)}
       onOpen={(a) => openAnime(a)}
-      onToggleFav={(g) => toggleFavGroup(g)}
+      onToggleFav={(g) => requestToggleFav(favNameSet.has(g.key), g.primary.name, () => toggleFavGroup(g))}
       focusProps={focusProps}
       focused={focused}
     />
@@ -1400,7 +1409,7 @@ function AppMain() {
       {...focusProps('now-fav')}
       hitSlop={6}
       style={[s.collectBtn, titleFaved && s.collectBtnOn, focused('now-fav')]}
-      onPress={() => toggleFavName(titleAnime.name, titleAnime)}>
+      onPress={() => requestToggleFav(titleFaved, titleAnime.name, () => toggleFavName(titleAnime.name, titleAnime))}>
       <Text style={[s.collectText, titleFaved && s.collectTextOn]}>
         {titleFaved ? '♥ 已收藏' : '♡ 收藏'}
       </Text>
@@ -1907,7 +1916,7 @@ function AppMain() {
   );
 
   const settingsModal = settingsOpen && (
-    <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSettingsOpen(false)}>
+    <Pressable focusable={false} style={[s.overlayBackdrop, s.overlayTop]} onPress={() => setSettingsOpen(false)}>
       <Pressable focusable={false} style={s.syncCard} onPress={() => {}}>
         <Text style={s.syncTitle}>⚙ 設定</Text>
         <View style={s.setTabs}>
