@@ -165,7 +165,7 @@ export function makeStyles(C: Theme) {
   collectTextOn: { color: '#fff' },
 
   // ===== Right rail (episodes) =====
-  rightRail: { width: 161, backgroundColor: C.surface, borderLeftWidth: 1, borderLeftColor: C.line, padding: 14, gap: 10 },
+  rightRail: { width: 177, backgroundColor: C.surface, borderLeftWidth: 1, borderLeftColor: C.line, padding: 14, gap: 10 },
   pickerHead: { flexDirection: 'row', alignItems: 'baseline' },
   pickerTitle: { color: C.text, fontSize: 15, fontWeight: '800' },
   pickerCount: { color: C.muted, fontSize: 12, fontWeight: '600' },
