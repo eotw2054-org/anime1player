@@ -348,6 +348,10 @@ export function makeStyles(C: Theme) {
   fsToggle: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(11,14,26,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   fsToggleFs: { top: 40, right: 30, backgroundColor: C.loveSolid, borderColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   fsToggleText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  // 收藏掣（overlay 內,喺全螢幕掣下面）
+  favBtnOv: { position: 'absolute', top: 46, right: 10, backgroundColor: 'rgba(11,14,26,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  favBtnOvFs: { top: 86, right: 30, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  favBtnOvOn: { backgroundColor: C.loveSolid, borderColor: '#fff' },
   // 開頭／結尾 標記掣（進度條上方，左／右分佈）
   markRow: { position: 'absolute', left: 14, right: 14, bottom: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   markGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },

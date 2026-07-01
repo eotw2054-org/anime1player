@@ -1245,6 +1245,13 @@ function AppMain() {
         onPrev={() => current?.prevUrl && playEpisode(current.prevUrl)}
         onNext={() => current?.nextUrl && playEpisode(current.nextUrl)}
         onToggleFs={() => setFullscreen((f) => !f)}
+        faved={!!current && favNameSet.has(normalizeName(current.anime.name) || favKey(current.anime))}
+        onToggleFav={() => {
+          if (!current) return;
+          const name = current.anime.name;
+          const isFaved = favNameSet.has(normalizeName(name) || favKey(current.anime));
+          requestToggleFav(isFaved, name, () => toggleFavName(name, current.anime));
+        }}
         mark={current ? marks[favKey(current.anime)] : undefined}
         onSetStart={() => setMarkField('start')}
         onSetEnd={() => setMarkField('end')}

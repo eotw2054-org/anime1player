@@ -16,6 +16,8 @@ export default function PlayerOverlay(props: {
   onPrev: () => void;
   onNext: () => void;
   onToggleFs: () => void;
+  faved: boolean;
+  onToggleFav: () => void;
   mark: { start?: number; end?: number; at?: number } | undefined;
   onSetStart: () => void;
   onSetEnd: () => void;
@@ -28,6 +30,7 @@ export default function PlayerOverlay(props: {
   const {
     player, current, ctrlShown, fullscreen,
     showControls, hideControls, onPrev, onNext, onToggleFs,
+    faved, onToggleFav,
     mark, onSetStart, onSetEnd, onClearStart, onClearEnd, focusProps, focused,
   } = props;
   const [pos, setPos] = useState({ t: 0, d: 0 });
@@ -195,6 +198,17 @@ export default function PlayerOverlay(props: {
             onPress={onToggleFs}>
             <Text style={s.fsToggleText}>{fullscreen ? '⤢ 退出全螢幕' : '⛶ 全螢幕'}</Text>
           </Pressable>
+
+          {/* 收藏（喺全螢幕掣下面,全螢幕/非全螢幕都有）*/}
+          {current && (
+            <Pressable
+              {...focusProps('ov-fav')}
+              focusable={!fullscreen}
+              style={[s.favBtnOv, fullscreen && s.favBtnOvFs, faved && s.favBtnOvOn, focused('ov-fav')]}
+              onPress={onToggleFav}>
+              <Text style={s.fsToggleText}>{faved ? '♥ 已收藏' : '♡ 收藏'}</Text>
+            </Pressable>
+          )}
 
           {/* 開頭／結尾 標記（設開頭貼左、設結尾貼右）—— 可 touch + 遙控/空中滑鼠 focus */}
           {current && (
