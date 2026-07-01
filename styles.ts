@@ -175,10 +175,10 @@ export function makeStyles(C: Theme) {
   rangeText: { color: C.muted, fontSize: 12, fontWeight: '800' },
   rangeTextOn: { color: '#fff' },
   epScroll: { flex: 1 },
-  epScrollPort: { maxHeight: 110, marginBottom: 4 }, // 3 行（30×3 + 6×2 + 8 padding）封頂，多過內部捲
+  epScrollPort: { maxHeight: 101, marginBottom: 4 }, // 3 行（27×3 + 6×2 + 8 padding）封頂，多過內部捲
   lockedControls: { backgroundColor: C.bg }, // 揀咗動畫時固定喺頂嘅控制區（唔跟清單捲）
   epWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 8 },
-  ep: { height: 30, borderRadius: 8, backgroundColor: C.raised, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  ep: { height: 27, borderRadius: 8, backgroundColor: C.raised, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   epOn: { backgroundColor: C.rose, borderColor: C.rose },
   epText: { color: C.text, fontSize: 13, fontWeight: '800', fontFamily: FONT_NUM },
   epTextOn: { color: '#fff' },
