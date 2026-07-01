@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 選集按鈕高度減 10%,選集區更緊湊。"
+      "releaseNotes": "• 選集每行之間嘅上下間距收窄 1px,更緊湊。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
