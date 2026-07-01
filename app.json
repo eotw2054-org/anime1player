@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 打橫模式「我的最愛」搬返去搜尋框右邊(側欄),搵片更順手。"
+      "releaseNotes": "• 打橫:側欄標題「宅家看動漫」唔再被截(☁ 收細做圖示)。\n• 打橫右邊選集欄收窄一半,空間讓返畀中間播放器。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

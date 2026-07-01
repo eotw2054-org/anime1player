@@ -1296,9 +1296,7 @@ function AppMain() {
           setSyncErr(null);
           setSyncOpen(true);
         }}>
-        <Text style={[s.cloudText, syncUser && s.cloudTextOn]} numberOfLines={1}>
-          {syncUser ? '☁ ' + syncUser : '☁'}
-        </Text>
+        <Text style={[s.cloudText, syncUser && s.cloudTextOn]}>☁</Text>
       </Pressable>
       {collapse && (
         <Pressable
@@ -1423,7 +1421,7 @@ function AppMain() {
   );
 
   // 集數分段 + 格
-  const EP_COLS = isLandscape ? 10 : 5;
+  const EP_COLS = isLandscape ? 4 : 5;
   const EP_GAP = 6;
   const epItemW = gridW > 0 ? (gridW - EP_GAP * (EP_COLS - 1)) / EP_COLS : 0;
 
