@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 手機轉橫就自動切橫屏模式(唔再鎖死打直);跟返你手機嘅自動旋轉設定。"
+      "releaseNotes": "• 打橫右欄移除重複嘅「自動最佳片源 / 播放即全螢幕」(已喺 ⚙ 設定),只留「進入全螢幕」。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

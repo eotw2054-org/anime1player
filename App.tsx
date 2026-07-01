@@ -1599,10 +1599,9 @@ function AppMain() {
     </View>
   );
 
+  // 播放偏好(自動最佳片源 / 播放即全螢幕)已入 ⚙ 設定,rail 只留「進入全螢幕」動作
   const railActions = current && (
     <View style={s.railActions}>
-      {fsOnPlayToggle}
-      {autoBestToggle}
       {fsEnterBtn()}
     </View>
   );
