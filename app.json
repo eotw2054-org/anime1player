@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 選集每行之間嘅上下間距收窄 1px,更緊湊。"
+      "releaseNotes": "• 打橫選集區:收窄「全螢幕播放」上面嘅空隙 + 掣縮細少少,騰多空間顯示多一行選集。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

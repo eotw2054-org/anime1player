@@ -165,7 +165,7 @@ export function makeStyles(C: Theme) {
   collectTextOn: { color: '#fff' },
 
   // ===== Right rail (episodes) =====
-  rightRail: { width: 210, backgroundColor: C.surface, borderLeftWidth: 1, borderLeftColor: C.line, padding: 14, gap: 10 },
+  rightRail: { width: 210, backgroundColor: C.surface, borderLeftWidth: 1, borderLeftColor: C.line, padding: 14, gap: 4 },
   pickerHead: { flexDirection: 'row', alignItems: 'baseline' },
   pickerTitle: { color: C.text, fontSize: 15, fontWeight: '800' },
   pickerCount: { color: C.muted, fontSize: 12, fontWeight: '600' },
@@ -224,8 +224,8 @@ export function makeStyles(C: Theme) {
   switchOn: { backgroundColor: C.rose },
   knob: { width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff', alignSelf: 'flex-start' },
   knobOn: { alignSelf: 'flex-end' },
-  btnFull: { borderRadius: 12, paddingVertical: 12, alignItems: 'center', backgroundColor: C.rose },
-  btnFullText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  btnFull: { borderRadius: 12, paddingVertical: 7, alignItems: 'center', backgroundColor: C.rose },
+  btnFullText: { color: '#fff', fontSize: 13, fontWeight: '900' },
 
   divider: { height: 1, backgroundColor: C.line, marginVertical: 10, marginHorizontal: 10 },
 
