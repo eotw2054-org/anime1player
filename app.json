@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 搜尋行同播放器之間加返空隙,唔再貼到實。"
+      "releaseNotes": "• 搜尋 / 已收藏 / 我的最愛 統一高度。\n• 取消收藏會彈確認視窗,免誤撳。\n• ⚙ 設定切換分頁時頂部對齊,唔再上下跳。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
