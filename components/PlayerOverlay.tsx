@@ -190,25 +190,25 @@ export default function PlayerOverlay(props: {
             </>
           )}
 
-          {/* 全螢幕 */}
-          <Pressable
-            {...focusProps('fs-toggle')}
-            focusable={!fullscreen}
-            style={[s.fsToggle, fullscreen && s.fsToggleFs, focused('fs-toggle')]}
-            onPress={onToggleFs}>
-            <Text style={s.fsToggleText}>{fullscreen ? '⤢ 退出全螢幕' : '⛶ 全螢幕'}</Text>
-          </Pressable>
-
-          {/* 收藏（喺全螢幕掣下面,全螢幕/非全螢幕都有）*/}
-          {current && (
+          {/* 右上角一行：[收藏] [全螢幕]（收藏喺全螢幕掣左邊）*/}
+          <View style={[s.ovTopRight, fullscreen && s.ovTopRightFs]} pointerEvents="box-none">
+            {current && (
+              <Pressable
+                {...focusProps('ov-fav')}
+                focusable={!fullscreen}
+                style={[s.favBtnOv, fullscreen && s.favBtnOvFs, faved && s.favBtnOvOn, focused('ov-fav')]}
+                onPress={onToggleFav}>
+                <Text style={s.fsToggleText}>{faved ? '♥ 已收藏' : '♡ 收藏'}</Text>
+              </Pressable>
+            )}
             <Pressable
-              {...focusProps('ov-fav')}
+              {...focusProps('fs-toggle')}
               focusable={!fullscreen}
-              style={[s.favBtnOv, fullscreen && s.favBtnOvFs, faved && s.favBtnOvOn, focused('ov-fav')]}
-              onPress={onToggleFav}>
-              <Text style={s.fsToggleText}>{faved ? '♥ 已收藏' : '♡ 收藏'}</Text>
+              style={[s.fsToggle, fullscreen && s.fsToggleFs, focused('fs-toggle')]}
+              onPress={onToggleFs}>
+              <Text style={s.fsToggleText}>{fullscreen ? '⤢ 退出全螢幕' : '⛶ 全螢幕'}</Text>
             </Pressable>
-          )}
+          </View>
 
           {/* 開頭／結尾 標記（設開頭貼左、設結尾貼右）—— 可 touch + 遙控/空中滑鼠 focus */}
           {current && (

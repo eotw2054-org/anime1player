@@ -345,12 +345,15 @@ export function makeStyles(C: Theme) {
   inlineTopEp: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '700', marginTop: 2, textShadowColor: 'rgba(0,0,0,0.7)', textShadowRadius: 5 },
   fsTopName: { color: '#fff', fontSize: 51, fontWeight: '800', maxWidth: '70%', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
   fsTopEp: { color: 'rgba(255,255,255,0.75)', fontSize: 39, fontWeight: '700', marginTop: 6, textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
-  fsToggle: { position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(11,14,26,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  fsToggleFs: { top: 40, right: 30, backgroundColor: C.loveSolid, borderColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  // 右上角一行容器：[收藏] [全螢幕] 同一行,右對齊
+  ovTopRight: { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  ovTopRightFs: { top: 40, right: 30, gap: 12 },
+  fsToggle: { backgroundColor: 'rgba(11,14,26,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  fsToggleFs: { backgroundColor: C.loveSolid, borderColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   fsToggleText: { color: '#fff', fontSize: 13, fontWeight: '800' },
-  // 收藏掣（overlay 內,喺全螢幕掣下面）
-  favBtnOv: { position: 'absolute', top: 46, right: 10, backgroundColor: 'rgba(11,14,26,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  favBtnOvFs: { top: 86, right: 30, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  // 收藏掣（overlay 內,喺全螢幕掣左邊）
+  favBtnOv: { backgroundColor: 'rgba(11,14,26,0.55)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  favBtnOvFs: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
   favBtnOvOn: { backgroundColor: C.loveSolid, borderColor: '#fff' },
   // 開頭／結尾 標記掣（進度條上方，左／右分佈）
   markRow: { position: 'absolute', left: 14, right: 14, bottom: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
