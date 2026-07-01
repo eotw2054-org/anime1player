@@ -1999,7 +1999,7 @@ function AppMain() {
                   setFlag(K.allowRemote, v);
                 }}>
                 <View style={[s.spDot, !allowRemote && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
-                <Text style={[s.spOptText, allowRemote && s.spOptTextOn]}>允許遠端遙控（被其他裝置控制）</Text>
+                <Text style={[s.spOptText, allowRemote && s.spOptTextOn]}>允許遙控播放</Text>
                 <Text style={s.spOptCk}>{allowRemote ? '✓' : ''}</Text>
               </Pressable>
               {/* D-pad 目標:撳 OK → focus 輸入框,彈系統鍵盤;TextInput 本身 focusable=false 免重複搶焦 */}
