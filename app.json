@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 打橫選集欄每行顯示 7 集;選集格固定闊度,唔再受左邊側欄伸縮影響。"
+      "releaseNotes": "• 修正打橫選集欄實際迫到剩 6 集 → 而家真係一行 7 集。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",

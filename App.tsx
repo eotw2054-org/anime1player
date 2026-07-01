@@ -1426,8 +1426,9 @@ function AppMain() {
   // 打橫:選集格用右欄固定內闊(rightRail 210 − padding 14×2)算,唔受左邊側欄伸縮重新量度影響。
   // 打直:用實際量度嘅 gridW(闊度跟螢幕)。
   const RAIL_INNER = 210 - 14 * 2;
-  const gridBase = isLandscape ? RAIL_INNER : gridW;
-  const epItemW = gridBase > 0 ? (gridBase - EP_GAP * (EP_COLS - 1)) / EP_COLS : 0;
+  // -2px 安全位 + Math.floor:免 sub-pixel rounding 令最後一格 wrap(7 集迫到剩 6)
+  const gridBase = (isLandscape ? RAIL_INNER : gridW) - 2;
+  const epItemW = gridBase > 0 ? Math.floor((gridBase - EP_GAP * (EP_COLS - 1)) / EP_COLS) : 0;
 
   const rangeTabs = epBuckets.length > 0 && (
     <FlatList
