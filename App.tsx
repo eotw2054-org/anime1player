@@ -1726,74 +1726,12 @@ function AppMain() {
     }
   })();
 
-  // 設定選單（撳 A1）：影片來源（可多選）+ 關於（版本）
+  // 撳 A1 logo：只顯示「關於」（影片來源 / 遙控 已搬入 ⚙ 設定）
   const siteMenu = siteOpen && (
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSiteOpen(false)}>
       <Pressable focusable={false} style={[s.spMenu, isLandscape ? s.spMenuLand : s.spMenuPort]} onPress={() => {}}>
-        <ScrollView showsVerticalScrollIndicator nestedScrollEnabled keyboardShouldPersistTaps="handled">
-        <Text style={s.srcMenuTitle}>設定</Text>
-        <Text style={s.spSection}>影片來源（可多選）</Text>
-        {allSites.map((k, i) => {
-          const on = !!enabledSites[k];
-          return (
-            <Pressable
-              key={k}
-              ref={(r) => {
-                a1Refs.current['site-' + k] = r;
-              }}
-              {...focusProps('site-' + k)}
-              hasTVPreferredFocus={i === 0}
-              style={[s.spOpt, on && s.spOptOn, focused('site-' + k)]}
-              onPress={() => toggleSite(k)}>
-              <View style={[s.spDot, !on && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
-              <Text style={[s.spOptText, on && s.spOptTextOn]}>{SITE_LABELS[k] ?? 'anime1.' + k}</Text>
-              <Text style={s.spOptCk}>{on ? '✓' : ''}</Text>
-            </Pressable>
-          );
-        })}
-        <Text style={s.spSection}>遙控</Text>
-        <Pressable
-          ref={(r) => {
-            a1Refs.current['allow-remote'] = r;
-          }}
-          {...focusProps('allow-remote')}
-          style={[s.spOpt, allowRemote && s.spOptOn, focused('allow-remote')]}
-          onPress={() => {
-            const v = !allowRemote;
-            setAllowRemote(v);
-            allowRemoteRef.current = v;
-            setFlag(K.allowRemote, v);
-          }}>
-          <View style={[s.spDot, !allowRemote && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
-          <Text style={[s.spOptText, allowRemote && s.spOptTextOn]}>允許遠端遙控（被其他裝置控制）</Text>
-          <Text style={s.spOptCk}>{allowRemote ? '✓' : ''}</Text>
-        </Pressable>
-        {/* D-pad 目標:撳 OK → focus 輸入框,彈系統鍵盤;TextInput 本身 focusable=false 免重複搶焦 */}
-        <Pressable
-          ref={(r) => {
-            a1Refs.current['rc-name'] = r;
-          }}
-          {...focusProps('rc-name')}
-          style={[s.spNameField, focused('rc-name')]}
-          onPress={() => nameInputRef.current?.focus()}>
-          <TextInput
-            ref={nameInputRef}
-            focusable={false}
-            style={s.spNameInput}
-            value={deviceName}
-            onChangeText={(t) => {
-              const v = t.slice(0, 64);
-              setDeviceName(v);
-              setStr(K.deviceName, v);
-            }}
-            placeholder="自訂名稱（按 OK 輸入）"
-            placeholderTextColor={C.muted}
-            maxLength={64}
-          />
-        </Pressable>
-        <Text style={s.spSection}>關於</Text>
+        <Text style={s.srcMenuTitle}>關於</Text>
         <Text style={s.spVer} selectable>{otaInfo}</Text>
-        </ScrollView>
       </Pressable>
     </Pressable>
   );
@@ -1971,27 +1909,93 @@ function AppMain() {
     <Pressable focusable={false} style={s.overlayBackdrop} onPress={() => setSettingsOpen(false)}>
       <Pressable focusable={false} style={s.syncCard} onPress={() => {}}>
         <Text style={s.syncTitle}>⚙ 設定</Text>
-        <Text style={s.syncSub}>播放偏好</Text>
-        {autoBestToggle}
-        {fsOnPlayToggle}
-        <Text style={[s.syncSub, { marginTop: 14 }]}>外觀主題</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6, marginBottom: 2 }}>
-          {THEME_IDS.map((tid) => {
-            const on = themeId === tid;
+        <ScrollView
+          style={{ maxHeight: isLandscape ? 300 : 520 }}
+          showsVerticalScrollIndicator
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled">
+          <Text style={s.syncSub}>播放偏好</Text>
+          {autoBestToggle}
+          {fsOnPlayToggle}
+
+          <Text style={[s.syncSub, { marginTop: 14 }]}>外觀主題</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6, marginBottom: 2 }}>
+            {THEME_IDS.map((tid) => {
+              const on = themeId === tid;
+              return (
+                <Pressable
+                  key={tid}
+                  {...focusProps('theme-' + tid)}
+                  style={[s.range, on && s.rangeOn, focused('theme-' + tid)]}
+                  onPress={() => setThemeId(tid)}>
+                  <Text style={[s.rangeText, on && s.rangeTextOn]}>{THEMES[tid].label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Text style={[s.syncSub, { marginTop: 14 }]}>影片來源（可多選）</Text>
+          {allSites.map((k) => {
+            const on = !!enabledSites[k];
             return (
               <Pressable
-                key={tid}
-                {...focusProps('theme-' + tid)}
-                style={[s.range, on && s.rangeOn, focused('theme-' + tid)]}
-                onPress={() => setThemeId(tid)}>
-                <Text style={[s.rangeText, on && s.rangeTextOn]}>{THEMES[tid].label}</Text>
+                key={k}
+                ref={(r) => {
+                  a1Refs.current['site-' + k] = r;
+                }}
+                {...focusProps('site-' + k)}
+                style={[s.spOpt, on && s.spOptOn, focused('site-' + k)]}
+                onPress={() => toggleSite(k)}>
+                <View style={[s.spDot, !on && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
+                <Text style={[s.spOptText, on && s.spOptTextOn]}>{SITE_LABELS[k] ?? 'anime1.' + k}</Text>
+                <Text style={s.spOptCk}>{on ? '✓' : ''}</Text>
               </Pressable>
             );
           })}
-        </View>
+
+          <Text style={[s.syncSub, { marginTop: 14 }]}>遙控</Text>
+          <Pressable
+            ref={(r) => {
+              a1Refs.current['allow-remote'] = r;
+            }}
+            {...focusProps('allow-remote')}
+            style={[s.spOpt, allowRemote && s.spOptOn, focused('allow-remote')]}
+            onPress={() => {
+              const v = !allowRemote;
+              setAllowRemote(v);
+              allowRemoteRef.current = v;
+              setFlag(K.allowRemote, v);
+            }}>
+            <View style={[s.spDot, !allowRemote && { backgroundColor: C.mutedDim, shadowOpacity: 0 }]} />
+            <Text style={[s.spOptText, allowRemote && s.spOptTextOn]}>允許遠端遙控（被其他裝置控制）</Text>
+            <Text style={s.spOptCk}>{allowRemote ? '✓' : ''}</Text>
+          </Pressable>
+          {/* D-pad 目標:撳 OK → focus 輸入框,彈系統鍵盤;TextInput 本身 focusable=false 免重複搶焦 */}
+          <Pressable
+            ref={(r) => {
+              a1Refs.current['rc-name'] = r;
+            }}
+            {...focusProps('rc-name')}
+            style={[s.spNameField, focused('rc-name')]}
+            onPress={() => nameInputRef.current?.focus()}>
+            <TextInput
+              ref={nameInputRef}
+              focusable={false}
+              style={s.spNameInput}
+              value={deviceName}
+              onChangeText={(t) => {
+                const v = t.slice(0, 64);
+                setDeviceName(v);
+                setStr(K.deviceName, v);
+              }}
+              placeholder="自訂名稱（按 OK 輸入）"
+              placeholderTextColor={C.muted}
+              maxLength={64}
+            />
+          </Pressable>
+        </ScrollView>
         <Pressable
           {...focusProps('settings-close')}
-          hasTVPreferredFocus
           style={[s.syncBtn, focused('settings-close')]}
           onPress={() => setSettingsOpen(false)}>
           <Text style={s.syncBtnText}>完成</Text>

@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 單一來源時「主要來源」按鈕會變灰(唔可撳)。\n• 頂部按鈕(播放器/遙控器、設定、雲端)統一高度。\n• Logo 加圓形邊框,更配襯。"
+      "releaseNotes": "• 設定集中:影片來源(可多選)+ 遙控 已搬入 ⚙ 設定。\n• 撳 A1 logo 而家淨係顯示「關於 / 版本」。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
