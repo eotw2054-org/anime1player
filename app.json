@@ -32,7 +32,7 @@
       "eas": {
         "projectId": "313eb4ec-182a-4cb3-82c2-97bf209ba6a6"
       },
-      "releaseNotes": "• 打橫選集區:收窄「全螢幕播放」上面嘅空隙 + 掣縮細少少,騰多空間顯示多一行選集。"
+      "releaseNotes": "• Gimy 清晰雲(modu)線路自動跳廣告(同 anime1 一樣偵測 server-stitched 廣告);其他線路唔受影響、唔會誤跳。"
     },
     "updates": {
       "url": "https://anime1-ota.eotw2054.workers.dev",
