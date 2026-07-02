@@ -88,6 +88,11 @@ describe('parseAdjacent', () => {
     const html = '<a href="/?p=">下一集</a>';
     expect(parseAdjacent(html).nextUrl).toBeNull();
   });
+  it('ignores non-http(s) href on the last episode (e.g. javascript:void(0))', () => {
+    // 最後一集嘅「下一集」係停用連結,唔可以當成可播網址,否則 fetch 爆 unknown protocol
+    const html = '<a href="javascript:void(0)">下一集</a>';
+    expect(parseAdjacent(html).nextUrl).toBeNull();
+  });
 });
 
 describe('parseApiSource', () => {

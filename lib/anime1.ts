@@ -174,11 +174,15 @@ export async function parseEpisode(episodeUrl: string): Promise<EpisodeInfo> {
 
   const nextA = root.querySelectorAll('a').find((a) => a.text.trim() === '下一集');
   const nextHref = nextA?.getAttribute('href');
-  const nextUrl = nextHref && nextHref !== '#' ? abs(nextHref, episodeUrl) : null;
+  // 最後一集嘅「下一集」href 係 javascript:void(0) 之類,abs()（new URL）唔會 throw,
+  // 會原樣回傳 → 按下去 fetch 就爆「unknown protocol: javascript」。只收 http(s)。
+  const nextAbs = nextHref && nextHref !== '#' ? abs(nextHref, episodeUrl) : null;
+  const nextUrl =
+    nextAbs && /^https?:\/\//i.test(nextAbs) && nextAbs !== episodeUrl ? nextAbs : null;
 
   return {
     streams,
-    nextUrl: nextUrl && nextUrl !== episodeUrl ? nextUrl : null,
+    nextUrl,
     prevUrl: buildPrevUrl(episodeUrl),
     episodeNo: episodeNo(episodeUrl),
   };

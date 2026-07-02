@@ -241,7 +241,8 @@ export function createMacCmsProvider(cfg: MacCmsConfig): SourceProvider {
       const cfg2 = extractPlayerConfig(html);
       const strip = (u?: string): string | null => {
         if (!u) return null;
-        return abs(profile.stripHash ? u.split('#')[0] : u, base);
+        const r = abs(profile.stripHash ? u.split('#')[0] : u, base);
+        return /^https?:\/\//i.test(r) ? r : null; // 過濾 javascript:void(0) 等非 http(s)
       };
       const nextUrl = strip(cfg2?.link_next);
       const prevUrl = strip(cfg2?.link_pre);
