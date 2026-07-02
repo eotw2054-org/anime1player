@@ -111,8 +111,10 @@ export function parseAdjacent(html: string, base = SITE): { prevUrl: string | nu
     const t = a.text.trim();
     const href = (a.getAttribute('href') || '').trim();
     if (!href || !/\d/.test(href)) continue; // 空 /?p= 唔計
-    if (t.includes('上一集') || t.includes('上一話')) prevUrl = abs(href, base);
-    else if (t.includes('下一集') || t.includes('下一話')) nextUrl = abs(href, base);
+    const resolved = abs(href, base);
+    if (!/^https?:\/\//i.test(resolved)) continue; // javascript:void(0) 等非 http(s) 唔計
+    if (t.includes('上一集') || t.includes('上一話')) prevUrl = resolved;
+    else if (t.includes('下一集') || t.includes('下一話')) nextUrl = resolved;
   }
   return { prevUrl, nextUrl };
 }
